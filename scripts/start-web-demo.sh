@@ -20,8 +20,41 @@ else
     exit 1
   }
   : > "${CLAUDEX_ROOT}/logs/proxy.log"
-  nohup "${CLAUDEX_ROOT}/scripts/launch-proxy.sh" >/dev/null 2>&1 &
-  disown || true
+  if [[ "$(uname -s)" == "Darwin" ]]; then
+    proxy_label="org.thirdwag.fablemaxxing.proxy"
+    proxy_domain="gui/$(id -u)"
+    proxy_plist="${HOME}/Library/LaunchAgents/${proxy_label}.plist"
+    python3 - "${proxy_plist}" "${CLAUDEX_ROOT}" "${proxy_label}" <<'PY'
+import pathlib
+import plistlib
+import sys
+
+path = pathlib.Path(sys.argv[1])
+root = pathlib.Path(sys.argv[2])
+label = sys.argv[3]
+payload = {
+    "Label": label,
+    "ProgramArguments": [str(root / "scripts/launch-proxy.sh")],
+    "WorkingDirectory": str(root),
+    "RunAtLoad": True,
+    "KeepAlive": True,
+    "ThrottleInterval": 3,
+    "EnvironmentVariables": {
+        "PATH": "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin",
+    },
+    "StandardOutPath": str(root / "logs/proxy-service.log"),
+    "StandardErrorPath": str(root / "logs/proxy-service.log"),
+}
+with path.open("wb") as handle:
+    plistlib.dump(payload, handle)
+PY
+    chmod 600 "${proxy_plist}"
+    launchctl bootout "${proxy_domain}/${proxy_label}" 2>/dev/null || true
+    launchctl bootstrap "${proxy_domain}" "${proxy_plist}"
+  else
+    nohup "${CLAUDEX_ROOT}/scripts/launch-proxy.sh" >/dev/null 2>&1 &
+    disown || true
+  fi
   claudex_wait_for_proxy 30 || {
     echo "CLIProxyAPI did not become healthy." >&2
     exit 1

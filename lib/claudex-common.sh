@@ -66,12 +66,13 @@ claudex_model_list() {
 }
 
 claudex_model_available() {
+  local target="${1:-${CLAUDEX_HARNESS_MODEL}}"
   claudex_model_list | python3 -c '
 import json, sys
 target = sys.argv[1]
 data = json.load(sys.stdin)
 raise SystemExit(0 if any(item.get("id") == target for item in data.get("data", [])) else 1)
-' "${CLAUDEX_CODEX_MODEL}"
+' "${target}"
 }
 
 claudex_wait_for_proxy() {

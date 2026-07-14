@@ -102,13 +102,13 @@ if [[ "${mode}" == "full" ]]; then
   if claudex_model_list >/dev/null 2>&1; then
     pass "CLIProxyAPI authenticated response received"
     if [[ -n "${CLAUDEX_CODEX_MODEL:-}" ]] && claudex_model_available; then
-      pass "Configured backend model available"
+      pass "Configured harness alias available"
     else
-      fail "Configured backend model available"
+      fail "Configured harness alias available"
     fi
   else
     fail "CLIProxyAPI authenticated response received"
-    fail "Configured backend model available"
+    fail "Configured harness alias available"
   fi
 else
   warn "Live proxy and model checks deferred until proxy startup"
