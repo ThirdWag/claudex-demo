@@ -1,19 +1,28 @@
-import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from "react";
-import type { Snapshot } from "./types";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import type { Snapshot, TokenTotals } from "./types";
+import { AgentFlow } from "./components/AgentFlow";
+import { AgentRail } from "./components/AgentRail";
+import { ProviderTotals } from "./components/ProviderTotals";
 import { TokenFlow } from "./components/TokenFlow";
-import { StatusPanel } from "./components/StatusPanel";
-import { OutputPanel } from "./components/OutputPanel";
 
-const TerminalPanel = lazy(() => import("./components/TerminalPanel").then((module) => ({ default: module.TerminalPanel })));
+const zeroTotals: TokenTotals = {
+  inputTokens: 0, outputTokens: 0, reasoningTokens: 0, cachedTokens: 0, totalTokens: 0, requests: 0,
+};
 
 const emptySnapshot: Snapshot = {
-  identity: { user: "", displayName: "Connecting…", role: "viewer", viaTailscale: false },
-  session: { name: "claudex", running: false, proxyHealthy: false },
-  route: { alias: "claudex-demo", model: "unconfigured" },
+  access: { viaTailscale: false },
+  updatedAt: new Date(0).toISOString(),
+  services: { proxyHealthy: false, herdrHealthy: false },
+  herdr: { healthy: false, version: "unavailable", agents: [] },
+  route: { claudeModel: "claude-fable-5", codexModel: "gpt-5.6-sol" },
   tokenEvents: [],
-  tokenTotals: { inputTokens: 0, outputTokens: 0, reasoningTokens: 0, cachedTokens: 0, totalTokens: 0, requests: 0 },
-  repository: { branch: "unknown", head: "unknown", dirty: false, files: [] },
-  tests: "Waiting for output…",
+  providerTotals: { claude: zeroTotals, codex: zeroTotals },
+  tokenTotals: zeroTotals,
+};
+
+const time = (value: string) => {
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? "--:--:--" : parsed.toLocaleTimeString([], { hour12: false });
 };
 
 export function App() {
@@ -23,11 +32,11 @@ export function App() {
   const refresh = useCallback(async () => {
     try {
       const response = await fetch("/api/snapshot", { cache: "no-store" });
-      if (!response.ok) throw new Error(`Console unavailable (${response.status})`);
+      if (!response.ok) throw new Error(`Observer unavailable (${response.status})`);
       setSnapshot(await response.json());
       setError("");
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "Console unavailable");
+      setError(reason instanceof Error ? reason.message : "Observer unavailable");
     }
   }, []);
 
@@ -37,45 +46,32 @@ export function App() {
     return () => window.clearInterval(timer);
   }, [refresh]);
 
-  const connectionLabel = useMemo(
-    () => snapshot.identity.viaTailscale ? "Connected via Tailscale" : "Local development",
-    [snapshot.identity.viaTailscale],
-  );
+  const stale = useMemo(() => Date.now() - Date.parse(snapshot.updatedAt) > 6000 || Boolean(error), [snapshot.updatedAt, error]);
+  const live = snapshot.services.herdrHealthy && snapshot.services.proxyHealthy && !stale;
 
   return (
     <main className="app-shell">
       <header className="topbar">
         <div className="brand">FABLEMAXXING</div>
-        <div className="topbar-context">
-          <span className="connection"><span className="status-dot healthy" />{connectionLabel}</span>
-          <span className="divider" />
-          <span className="access">Access: Read-only observer</span>
-          <span className="divider" />
-          <span className="session-label">Session: {snapshot.session.name}</span>
+        <div className="topbar-badges">
+          <span className={`badge ${snapshot.access.viaTailscale ? "good" : "neutral"}`}><i />Tailnet {snapshot.access.viaTailscale ? "live" : "local"}</span>
+          <span className="badge observer">Observer · read only</span>
         </div>
-        <div className="actions" aria-label="Observer mode">
-          <span className="role viewer">Observer</span>
+        <div className={`freshness ${live ? "good" : stale ? "bad" : "neutral"}`}>
+          <span>Last updated</span><strong>{time(snapshot.updatedAt)}</strong><i />{live ? "Live" : stale ? "Stale" : "Connecting"}
         </div>
       </header>
 
       {error && <div className="notice error">{error}</div>}
 
-      <div className="workspace">
-        <section className="primary-column">
-          <Suspense fallback={<section className="panel terminal-panel loading-terminal">Loading terminal…</section>}>
-            <TerminalPanel
-              running={snapshot.session.running}
-              alias={snapshot.route.alias}
-              model={snapshot.route.model}
-            />
-          </Suspense>
-          <OutputPanel tests={snapshot.tests} snapshot={snapshot} />
-        </section>
-        <aside className="evidence-column">
-          <TokenFlow events={snapshot.tokenEvents} totals={snapshot.tokenTotals} route={snapshot.route} live={snapshot.session.proxyHealthy} />
-          <StatusPanel snapshot={snapshot} />
-        </aside>
+      <div className="dashboard">
+        <AgentRail agents={snapshot.herdr.agents} healthy={snapshot.services.herdrHealthy} version={snapshot.herdr.version} />
+        <AgentFlow snapshot={snapshot} live={live} />
+        <ProviderTotals totals={snapshot.providerTotals} combined={snapshot.tokenTotals} route={snapshot.route} />
+        <TokenFlow events={snapshot.tokenEvents} live={live} />
       </div>
+
+      <footer className="source-note">Sources: Herdr socket API + CLIProxyAPI usage queue · request correlation is temporal.</footer>
     </main>
   );
 }

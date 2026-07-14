@@ -1,13 +1,9 @@
-import { readFile } from "node:fs/promises";
 import { extname, resolve, sep } from "node:path";
-import * as pty from "node-pty";
-import { identityFromRequest, isSameOrigin } from "./security";
-import { sanitizeUsageRecord, TokenStore } from "./telemetry";
-import type { SessionIdentity } from "./types";
+import { identityFromRequest } from "./security";
+import { readHerdrSnapshot } from "./herdr";
+import { providerForEvent, publicTokenEvent, sanitizeUsageRecord, TokenStore, tokenTotals } from "./telemetry";
 
 const root = process.env.CLAUDEX_ROOT ?? resolve(import.meta.dir, "../..");
-const repo = process.env.CLAUDEX_REPO ?? resolve(root, "repo/cre-api-demo");
-const session = process.env.CLAUDEX_TMUX_SESSION ?? "claudex";
 const port = Number(process.env.FABLEMAXXING_PORT ?? 3000);
 const dist = resolve(import.meta.dir, "../dist");
 const statePath = process.env.FABLEMAXXING_STATE_FILE ?? resolve(root, "state/token-events.json");
@@ -16,6 +12,7 @@ await store.load();
 
 if (process.env.FABLEMAXXING_DEMO_DATA === "1" && store.events().length === 0) {
   const now = Date.now();
+  const models = ["claude-fable-5", "gpt-5.6-sol"];
   await store.ingest(Array.from({ length: 8 }, (_, index) => sanitizeUsageRecord({
     timestamp: new Date(now - index * 8200).toISOString(),
     latency_ms: 420 + index * 67,
@@ -28,30 +25,13 @@ if (process.env.FABLEMAXXING_DEMO_DATA === "1" && store.events().length === 0) {
       total_tokens: 19500 - index * 510,
     },
     failed: false,
-    provider: "openai",
-    model: process.env.CLAUDEX_CODEX_MODEL ?? "gpt-5.6-sol",
-    alias: process.env.CLAUDEX_HARNESS_MODEL ?? "claudex-demo",
-    endpoint: "POST /v1/messages",
+    provider: index % 2 ? "openai" : "anthropic",
+    model: models[index % 2],
   })));
 }
 
-type SocketData = {
-  identity: SessionIdentity;
-  terminal?: pty.IPty;
-};
-
 const json = (body: unknown, status = 200) =>
   Response.json(body, { status, headers: { "Cache-Control": "no-store" } });
-
-async function capture(command: string[], cwd = root) {
-  const child = Bun.spawn(command, { cwd, stdout: "pipe", stderr: "pipe" });
-  const [stdout, stderr, exitCode] = await Promise.all([
-    new Response(child.stdout).text(),
-    new Response(child.stderr).text(),
-    child.exited,
-  ]);
-  return { stdout: stdout.trim(), stderr: stderr.trim(), exitCode };
-}
 
 async function proxyHealthy() {
   const key = process.env.CLAUDEX_PROXY_KEY;
@@ -68,60 +48,28 @@ async function proxyHealthy() {
   }
 }
 
-async function tmuxRunning() {
-  return (await capture(["tmux", "has-session", "-t", session])).exitCode === 0;
-}
+async function snapshot(viaTailscale: boolean) {
+  const allEvents = store.events();
+  const events = allEvents.slice(-40).reverse();
+  const claudeEvents = allEvents.filter((event) => providerForEvent(event) === "claude");
+  const codexEvents = allEvents.filter((event) => providerForEvent(event) === "codex");
+  const [proxy, herdr] = await Promise.all([proxyHealthy(), readHerdrSnapshot()]);
 
-async function tail(path: string, lines = 80) {
-  try {
-    const content = await readFile(path, "utf8");
-    return content.split("\n").slice(-lines).join("\n");
-  } catch {
-    return "Waiting for output…";
-  }
-}
-
-async function repositoryStatus() {
-  const [branch, head, status, diff] = await Promise.all([
-    capture(["git", "branch", "--show-current"], repo),
-    capture(["git", "log", "-1", "--pretty=%h %s"], repo),
-    capture(["git", "status", "--short"], repo),
-    capture(["git", "diff", "--numstat"], repo),
-  ]);
-  const files = diff.stdout
-    .split("\n")
-    .filter(Boolean)
-    .slice(0, 3)
-    .map((line) => {
-      const [added, deleted, ...path] = line.split("\t");
-      return { path: path.join("\t"), added: Number(added) || 0, deleted: Number(deleted) || 0 };
-    });
   return {
-    branch: branch.stdout || "unknown",
-    head: head.stdout || "unknown",
-    dirty: Boolean(status.stdout),
-    files,
-  };
-}
-
-async function snapshot(identity: SessionIdentity) {
-  const [proxy, tmux, repository, tests] = await Promise.all([
-    proxyHealthy(),
-    tmuxRunning(),
-    repositoryStatus(),
-    tail(resolve(root, "logs/tests.log")),
-  ]);
-  return {
-    identity,
-    session: { name: session, running: tmux, proxyHealthy: proxy },
+    access: { viaTailscale },
+    updatedAt: new Date().toISOString(),
+    services: { proxyHealthy: proxy, herdrHealthy: herdr.healthy },
+    herdr,
     route: {
-      alias: process.env.CLAUDEX_HARNESS_MODEL ?? "claudex-demo",
-      model: process.env.CLAUDEX_CODEX_MODEL ?? "unconfigured",
+      claudeModel: process.env.CLAUDEX_HARNESS_MODEL ?? "claude-fable-5",
+      codexModel: process.env.CLAUDEX_CODEX_MODEL ?? "gpt-5.6-sol",
     },
-    tokenEvents: store.events().slice(-40).reverse(),
-    tokenTotals: store.totals(),
-    repository,
-    tests,
+    tokenEvents: events.map(publicTokenEvent),
+    providerTotals: {
+      claude: tokenTotals(claudeEvents),
+      codex: tokenTotals(codexEvents),
+    },
+    tokenTotals: tokenTotals(allEvents),
   };
 }
 
@@ -146,14 +94,13 @@ async function pollUsage() {
     if (!response.ok) return;
     const records = await response.json();
     if (!Array.isArray(records)) return;
-    const expectedAlias = process.env.CLAUDEX_HARNESS_MODEL;
     const events = records
       .filter((record) => record && typeof record === "object")
       .map((record) => sanitizeUsageRecord(record as Record<string, unknown>))
-      .filter((event) => !expectedAlias || event.alias === expectedAlias || event.model === process.env.CLAUDEX_CODEX_MODEL);
+      .filter((event) => providerForEvent(event) !== "unknown");
     if (events.length) await store.ingest(events);
   } catch {
-    // The proxy can legitimately be stopped while the console remains available.
+    // Either observed service can stop independently while the observer stays up.
   } finally {
     polling = false;
   }
@@ -170,24 +117,18 @@ const mimeTypes: Record<string, string> = {
   ".svg": "image/svg+xml",
 };
 
-const server = Bun.serve<SocketData>({
+const server = Bun.serve({
   hostname: "127.0.0.1",
   port,
-  async fetch(request, server) {
+  async fetch(request) {
     const identity = identityFromRequest(request);
     if (!identity) return new Response("FableMaxxing is available through Tailscale Serve only.", { status: 401 });
     const url = new URL(request.url);
 
-    if (url.pathname === "/ws/terminal") {
-      if (!isSameOrigin(request)) return new Response("Invalid origin.", { status: 403 });
-      if (!(await tmuxRunning())) return new Response("No tmux session to observe.", { status: 409 });
-      return server.upgrade(request, { data: { identity } })
-        ? undefined
-        : new Response("WebSocket upgrade failed.", { status: 400 });
+    if (url.pathname === "/api/snapshot") return json(await snapshot(identity.viaTailscale));
+    if (url.pathname === "/api/action" || url.pathname === "/ws/terminal") {
+      return json({ ok: false, message: "FableMaxxing is display-only." }, 405);
     }
-
-    if (url.pathname === "/api/snapshot") return json(await snapshot(identity));
-    if (url.pathname === "/api/action") return json({ ok: false, message: "FableMaxxing is display-only." }, 405);
 
     const requested = url.pathname === "/" ? "index.html" : url.pathname.slice(1);
     const filePath = resolve(dist, requested);
@@ -197,35 +138,9 @@ const server = Bun.serve<SocketData>({
       return new Response(file, { headers: { "Content-Type": mimeTypes[extname(filePath)] ?? "application/octet-stream" } });
     }
     const index = Bun.file(resolve(dist, "index.html"));
-    return (await index.exists()) ? new Response(index, { headers: { "Content-Type": mimeTypes[".html"] } }) : new Response("Build missing.", { status: 503 });
-  },
-  websocket: {
-    open(socket) {
-      const terminal = pty.spawn("tmux", ["attach-session", "-t", session], {
-        name: "xterm-256color",
-        cols: 120,
-        rows: 38,
-        cwd: repo,
-        env: { ...process.env, TERM: "xterm-256color" } as Record<string, string>,
-      });
-      socket.data.terminal = terminal;
-      terminal.onData((data) => socket.send(data));
-      terminal.onExit(() => socket.close());
-    },
-    message(socket, message) {
-      let payload: { type?: string; data?: string; cols?: number; rows?: number };
-      try {
-        payload = JSON.parse(typeof message === "string" ? message : new TextDecoder().decode(message as Uint8Array));
-      } catch {
-        return;
-      }
-      if (payload.type === "resize" && payload.cols && payload.rows) {
-        socket.data.terminal?.resize(Math.min(payload.cols, 240), Math.min(payload.rows, 80));
-      }
-    },
-    close(socket) {
-      socket.data.terminal?.kill();
-    },
+    return (await index.exists())
+      ? new Response(index, { headers: { "Content-Type": mimeTypes[".html"] } })
+      : new Response("Build missing.", { status: 503 });
   },
 });
 

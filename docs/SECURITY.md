@@ -12,10 +12,12 @@ The sanitized viewer is not a substitute for reviewing raw logs before a public 
 
 ## FableMaxxing browser boundary
 
-- The web backend listens only on `127.0.0.1:3000` and is exposed privately with Tailscale Serve.
+- The web backend listens only on its configured `127.0.0.1` port and is exposed privately with Tailscale Serve.
 - Requests without Tailscale identity headers are rejected unless explicit local-development mode is enabled.
-- Every identified tailnet user is read-only; FableMaxxing exposes no lifecycle controls or writable terminal path.
-- The action endpoint always returns HTTP 405, and terminal WebSocket upgrades require a same-origin request plus an existing tmux session.
+- Every identified tailnet user is read-only; FableMaxxing exposes no lifecycle controls or terminal stream.
+- The action endpoint and legacy terminal WebSocket path always return HTTP 405.
 - The backend polls CLIProxyAPI's authenticated management usage queue over localhost and never controls the proxy service.
-- Raw usage records are reduced to token counts, latency, provider/model route, endpoint, and success state before mode-`0600` persistence.
+- Raw usage records are reduced to token counts, latency, provider/model classification, and success state before mode-`0600` persistence. The browser receives neither request IDs nor raw model, alias, or endpoint fields.
+- Herdr socket snapshots are allowlisted to synthetic agent aliases, agent type, status, focus, and Herdr version. Working directories, workspace labels, terminal IDs, session IDs, and terminal content never cross the browser boundary.
+- Tailscale identity is used only to authorize the request; login and display-name values are not returned by the snapshot API.
 - Never enable Tailscale Funnel for this service.

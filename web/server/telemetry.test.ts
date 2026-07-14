@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { sanitizeUsageRecord, tokenTotals } from "./telemetry";
+import { providerForEvent, publicTokenEvent, sanitizeUsageRecord, tokenTotals } from "./telemetry";
 
 describe("usage telemetry sanitization", () => {
   test("keeps token accounting and drops credentials and identity", () => {
@@ -19,8 +19,6 @@ describe("usage telemetry sanitization", () => {
       failed: false,
       provider: "openai",
       model: "gpt-test",
-      alias: "claudex-demo",
-      endpoint: "POST /v1/messages",
     });
 
     expect(event).toEqual({
@@ -35,11 +33,27 @@ describe("usage telemetry sanitization", () => {
       failed: false,
       provider: "openai",
       model: "gpt-test",
-      alias: "claudex-demo",
-      endpoint: "POST /v1/messages",
     });
     expect(JSON.stringify(event)).not.toContain("private@example.com");
     expect(JSON.stringify(event)).not.toContain("sk-sensitive");
+  });
+
+  test("publishes a canonical provider without request identifiers or raw model metadata", () => {
+    const event = sanitizeUsageRecord({
+      request_id: "private-request-id",
+      provider: "openai",
+      model: "gpt-5.6-sol",
+      endpoint: "POST /private/path",
+      tokens: { total_tokens: 42 },
+    }) as ReturnType<typeof sanitizeUsageRecord> & { alias: string; endpoint: string };
+    event.alias = "legacy-private-alias";
+    event.endpoint = "POST /legacy/private/path";
+    expect(providerForEvent(event)).toBe("codex");
+    const published = JSON.stringify(publicTokenEvent(event));
+    expect(published).not.toContain("private-request-id");
+    expect(published).not.toContain("gpt-5.6-sol");
+    expect(published).not.toContain("private/path");
+    expect(published).not.toContain("legacy-private-alias");
   });
 
   test("sums the session token dimensions", () => {

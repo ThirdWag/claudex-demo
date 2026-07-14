@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { identityFromRequest, isSameOrigin } from "./security";
+import { identityFromRequest } from "./security";
 
 afterEach(() => {
   delete process.env.FABLEMAXXING_ALLOW_LOCAL;
@@ -21,12 +21,4 @@ describe("Tailscale identity authorization", () => {
     expect(identityFromRequest(new Request("http://127.0.0.1:3000"))).toBeNull();
   });
 
-  test("requires matching origin and host for terminal observation websockets", () => {
-    expect(isSameOrigin(new Request("https://demo.example/api/action", {
-      headers: { host: "demo.example", origin: "https://demo.example" },
-    }))).toBe(true);
-    expect(isSameOrigin(new Request("https://demo.example/api/action", {
-      headers: { host: "demo.example", origin: "https://attacker.example" },
-    }))).toBe(false);
-  });
 });

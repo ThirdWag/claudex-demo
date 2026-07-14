@@ -1,5 +1,16 @@
+export type Provider = "claude" | "codex";
+export type AgentStatus = "working" | "idle" | "done" | "blocked" | "unknown";
+
+export interface TokenTotals {
+  inputTokens: number;
+  outputTokens: number;
+  reasoningTokens: number;
+  cachedTokens: number;
+  totalTokens: number;
+  requests: number;
+}
+
 export interface TokenEvent {
-  id: string;
   timestamp: string;
   latencyMs: number;
   inputTokens: number;
@@ -8,30 +19,23 @@ export interface TokenEvent {
   cachedTokens: number;
   totalTokens: number;
   failed: boolean;
-  provider: string;
-  model: string;
+  provider: Provider;
+}
+
+export interface HerdrAgent {
   alias: string;
-  endpoint: string;
+  type: string;
+  status: AgentStatus;
+  focused: boolean;
 }
 
 export interface Snapshot {
-  identity: { user: string; displayName: string; role: "viewer"; viaTailscale: boolean };
-  session: { name: string; running: boolean; proxyHealthy: boolean };
-  route: { alias: string; model: string };
+  access: { viaTailscale: boolean };
+  updatedAt: string;
+  services: { proxyHealthy: boolean; herdrHealthy: boolean };
+  herdr: { healthy: boolean; version: string; agents: HerdrAgent[] };
+  route: { claudeModel: string; codexModel: string };
   tokenEvents: TokenEvent[];
-  tokenTotals: {
-    inputTokens: number;
-    outputTokens: number;
-    reasoningTokens: number;
-    cachedTokens: number;
-    totalTokens: number;
-    requests: number;
-  };
-  repository: {
-    branch: string;
-    head: string;
-    dirty: boolean;
-    files: Array<{ path: string; added: number; deleted: number }>;
-  };
-  tests: string;
+  providerTotals: { claude: TokenTotals; codex: TokenTotals };
+  tokenTotals: TokenTotals;
 }

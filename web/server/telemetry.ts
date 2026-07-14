@@ -1,6 +1,6 @@
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
-import type { TokenEvent, TokenTotals } from "./types";
+import type { Provider, PublicTokenEvent, TokenEvent, TokenTotals } from "./types";
 
 type UnknownRecord = Record<string, unknown>;
 
@@ -25,8 +25,29 @@ export function sanitizeUsageRecord(raw: UnknownRecord): TokenEvent {
     failed: raw.failed === true,
     provider: stringValue(raw.provider),
     model: stringValue(raw.model),
-    alias: stringValue(raw.alias),
-    endpoint: stringValue(raw.endpoint),
+  };
+}
+
+export function providerForEvent(event: TokenEvent): Provider {
+  const hint = `${event.provider} ${event.model}`.toLowerCase();
+  if (/claude|anthropic/.test(hint)) return "claude";
+  if (/codex|openai|gpt/.test(hint)) return "codex";
+  return "unknown";
+}
+
+export function publicTokenEvent(event: TokenEvent): PublicTokenEvent {
+  const provider = providerForEvent(event);
+  if (provider === "unknown") throw new Error("Unknown providers cannot be published");
+  return {
+    timestamp: event.timestamp,
+    latencyMs: event.latencyMs,
+    inputTokens: event.inputTokens,
+    outputTokens: event.outputTokens,
+    reasoningTokens: event.reasoningTokens,
+    cachedTokens: event.cachedTokens,
+    totalTokens: event.totalTokens,
+    failed: event.failed,
+    provider,
   };
 }
 

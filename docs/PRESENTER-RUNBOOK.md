@@ -70,13 +70,13 @@ Start the private site in the background so it survives SSH disconnects:
 tailscale serve status
 ```
 
-Open the reported HTTPS MagicDNS URL from a browser on an authorized tailnet device. Every Tailscale-identified user is an observer. There are no Start, Reset, or Stop controls, the action endpoint returns HTTP 405, and the optional terminal mirror never accepts input. Restrict the Serve destination in the tailnet policy; do not enable Funnel.
+Open the reported HTTPS MagicDNS URL from a browser on an authorized tailnet device. Every Tailscale-identified user is an observer. There are no Start, Reset, or Stop controls; the action and legacy terminal endpoints return HTTP 405. Restrict the Serve destination in the tailnet policy; do not enable Funnel.
 
-The “Claude → Codex Token Flow” panel reads CLIProxyAPI's localhost-only usage queue. It persists only sanitized token counts, timing, route, model, and status. Raw prompts, API keys, OAuth material, and CLIProxyAPI source identities are never sent to the browser.
+The “Agent Request Flow” panel combines Herdr's socket API with CLIProxyAPI's localhost-only usage queue. It shows Claude Code inside Herdr and a true proxy branch to Claude or Codex; it does not claim that Claude hands a request directly to Codex. Agent/event correlation is explicitly temporal. Raw prompts, paths, workspace labels, request/session/terminal IDs, API keys, OAuth material, and source identities are never sent to the browser.
 
 ## 5. Narration
 
-Opening: Claude Code is the agent harness. It manages repository tools and orchestration. It sends a model alias to a localhost compatibility endpoint, while the adjacent proxy evidence shows the configured Codex route. Model self-description is not proof.
+Opening: Herdr is the runtime orchestrator and Claude Code is an agent inside it. Claude Code sends model requests to the localhost compatibility endpoint, where CLIProxyAPI routes each request to the configured Claude or Codex provider. Model self-description is not proof.
 
 Completion: The meaningful evidence is a reproduced failure, a regression test, a focused patch, passing verification, an independent review, and a visible routing trail.
 
