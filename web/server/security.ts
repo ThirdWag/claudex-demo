@@ -1,14 +1,5 @@
 import type { SessionIdentity } from "./types";
 
-function allowedUsers(): Set<string> {
-  return new Set(
-    (process.env.FABLEMAXXING_ALLOWED_USERS ?? "")
-      .split(",")
-      .map((value) => value.trim().toLowerCase())
-      .filter(Boolean),
-  );
-}
-
 export function identityFromRequest(request: Request): SessionIdentity | null {
   const login = request.headers.get("tailscale-user-login")?.trim();
   const name = request.headers.get("tailscale-user-name")?.trim();
@@ -16,7 +7,7 @@ export function identityFromRequest(request: Request): SessionIdentity | null {
     return {
       user: login,
       displayName: name || login,
-      role: allowedUsers().has(login.toLowerCase()) ? "presenter" : "viewer",
+      role: "viewer",
       viaTailscale: true,
     };
   }
@@ -25,7 +16,7 @@ export function identityFromRequest(request: Request): SessionIdentity | null {
     return {
       user: "local-dev",
       displayName: "Local developer",
-      role: "presenter",
+      role: "viewer",
       viaTailscale: false,
     };
   }

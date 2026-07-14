@@ -19,8 +19,6 @@ const emptySnapshot: Snapshot = {
 export function App() {
   const [snapshot, setSnapshot] = useState<Snapshot>(emptySnapshot);
   const [error, setError] = useState("");
-  const [busy, setBusy] = useState<string | null>(null);
-  const [notice, setNotice] = useState("");
 
   const refresh = useCallback(async () => {
     try {
@@ -39,28 +37,6 @@ export function App() {
     return () => window.clearInterval(timer);
   }, [refresh]);
 
-  const isPresenter = snapshot.identity.role === "presenter";
-  const action = async (name: "start" | "reset" | "stop") => {
-    if (!isPresenter || busy) return;
-    if (name === "reset" && !window.confirm("Reset the disposable demo repository to its baseline?")) return;
-    setBusy(name);
-    setNotice("");
-    try {
-      const response = await fetch("/api/action", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: name }),
-      });
-      const result = await response.json();
-      setNotice(result.message || (response.ok ? "Done." : "Action failed."));
-      await refresh();
-    } catch {
-      setNotice("Action failed. Check the remote console log.");
-    } finally {
-      setBusy(null);
-    }
-  };
-
   const connectionLabel = useMemo(
     () => snapshot.identity.viaTailscale ? "Connected via Tailscale" : "Local development",
     [snapshot.identity.viaTailscale],
@@ -73,26 +49,22 @@ export function App() {
         <div className="topbar-context">
           <span className="connection"><span className="status-dot healthy" />{connectionLabel}</span>
           <span className="divider" />
-          <span className="access">Access: {isPresenter ? "Presenter" : "Read-only"}</span>
+          <span className="access">Access: Read-only observer</span>
           <span className="divider" />
           <span className="session-label">Session: {snapshot.session.name}</span>
         </div>
-        <div className="actions" aria-label="Demo controls">
-          <span className={`role ${isPresenter ? "presenter" : "viewer"}`}>{isPresenter ? "Presenter" : "Viewer"}</span>
-          <button className="start" disabled={!isPresenter || Boolean(busy)} onClick={() => action("start")}>{busy === "start" ? "Starting…" : "Start"}</button>
-          <button disabled={!isPresenter || Boolean(busy)} onClick={() => action("reset")}>{busy === "reset" ? "Resetting…" : "Reset"}</button>
-          <button className="stop" disabled={!isPresenter || Boolean(busy)} onClick={() => action("stop")}>{busy === "stop" ? "Stopping…" : "Stop"}</button>
+        <div className="actions" aria-label="Observer mode">
+          <span className="role viewer">Observer</span>
         </div>
       </header>
 
-      {(error || notice) && <div className={error ? "notice error" : "notice"}>{error || notice}</div>}
+      {error && <div className="notice error">{error}</div>}
 
       <div className="workspace">
         <section className="primary-column">
           <Suspense fallback={<section className="panel terminal-panel loading-terminal">Loading terminal…</section>}>
             <TerminalPanel
               running={snapshot.session.running}
-              presenter={isPresenter}
               alias={snapshot.route.alias}
               model={snapshot.route.model}
             />

@@ -2,20 +2,18 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { identityFromRequest, isSameOrigin } from "./security";
 
 afterEach(() => {
-  delete process.env.FABLEMAXXING_ALLOWED_USERS;
   delete process.env.FABLEMAXXING_ALLOW_LOCAL;
 });
 
 describe("Tailscale identity authorization", () => {
-  test("grants presenter access only to the explicit allowlist", () => {
-    process.env.FABLEMAXXING_ALLOWED_USERS = "presenter@example.com";
-    const presenter = identityFromRequest(new Request("https://demo.example", {
+  test("treats every Tailscale identity as a read-only viewer", () => {
+    const observer = identityFromRequest(new Request("https://demo.example", {
       headers: { "Tailscale-User-Login": "presenter@example.com", "Tailscale-User-Name": "Presenter" },
     }));
     const viewer = identityFromRequest(new Request("https://demo.example", {
       headers: { "Tailscale-User-Login": "viewer@example.com" },
     }));
-    expect(presenter?.role).toBe("presenter");
+    expect(observer?.role).toBe("viewer");
     expect(viewer?.role).toBe("viewer");
   });
 
@@ -23,7 +21,7 @@ describe("Tailscale identity authorization", () => {
     expect(identityFromRequest(new Request("http://127.0.0.1:3000"))).toBeNull();
   });
 
-  test("requires matching origin and host for mutations and websockets", () => {
+  test("requires matching origin and host for terminal observation websockets", () => {
     expect(isSameOrigin(new Request("https://demo.example/api/action", {
       headers: { host: "demo.example", origin: "https://demo.example" },
     }))).toBe(true);

@@ -8,7 +8,7 @@ export function OutputPanel({ tests, snapshot }: { tests: string; snapshot: Snap
     `Tailscale identity: ${snapshot.identity.displayName}`,
     `Proxy: ${snapshot.session.proxyHealthy ? "healthy" : "stopped"}`,
     `Route: ${snapshot.route.alias} → ${snapshot.route.model}`,
-    `Session: ${snapshot.session.running ? "running" : "stopped"}`,
+    `Observed tmux: ${snapshot.session.running ? "attached" : "not found"}`,
     `Usage events captured: ${snapshot.tokenTotals.requests}`,
   ].join("\n");
   return (

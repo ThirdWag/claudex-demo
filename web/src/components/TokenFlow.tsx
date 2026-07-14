@@ -21,11 +21,11 @@ export function TokenFlow({ events, totals, route, live }: {
       <div className="route-label">{route.alias} → {route.model}</div>
       <div className="token-table-wrap">
         <table className="token-table">
-          <thead><tr><th>Time</th><th>Request</th><th>Claude in</th><th>Cache</th><th>Output</th><th>Reasoning</th><th>Total</th><th>Status</th></tr></thead>
+          <thead><tr><th>Time</th><th>Provider</th><th>Input</th><th>Cache</th><th>Output</th><th>Reasoning</th><th>Total</th><th>Status</th></tr></thead>
           <tbody>
             {events.slice(0, 9).map((event) => (
               <tr key={event.id}>
-                <td>{time(event.timestamp)}</td><td title={event.endpoint}>{event.endpoint.replace(/^(POST\s+)?\/v1\//, "") || "request"}</td><td>{compact(event.inputTokens)}</td><td>{compact(event.cachedTokens)}</td>
+                <td>{time(event.timestamp)}</td><td title={`${event.model} · ${event.endpoint}`}>{event.provider || event.model || "unknown"}</td><td>{compact(event.inputTokens)}</td><td>{compact(event.cachedTokens)}</td>
                 <td>{compact(event.outputTokens)}</td><td>{compact(event.reasoningTokens)}</td><td>{compact(event.totalTokens)}</td>
                 <td className={event.failed ? "failed" : "success"}>{event.failed ? "ERR" : "200"}</td>
               </tr>

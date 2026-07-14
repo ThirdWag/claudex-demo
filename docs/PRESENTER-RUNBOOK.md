@@ -55,18 +55,13 @@ Edit `~/claudex-demo/config/demo.env`. Discover the current Codex model from the
 tmux attach -t claudex
 ```
 
-The demo command must own the proxy process so its routing evidence appears in the log pane. Stop any Homebrew-managed or manually launched instance already using port 8317 before rehearsal; the demo will start its own localhost-only process.
+The terminal workflow and the browser observer must use the established CLIProxyAPI service already running on port 8317. Do not stop, replace, or launch another proxy for FableMaxxing.
 
 Use [LIVE-DEMO-PROMPT.md](LIVE-DEMO-PROMPT.md) in the large Claude Code pane. Verify that both the primary request and subagent requests appear in the sanitized log pane.
 
 ### Browser presentation with FableMaxxing
 
-Set the exact Tailscale login allowed to control the demo:
-
-```bash
-nano ~/claudex-demo/config/demo.env
-# export FABLEMAXXING_ALLOWED_USERS="presenter@example.com"
-```
+FableMaxxing is display-only. Configure its mode-`0600` environment with the existing proxy client key and localhost management credential, and enable CLIProxyAPI usage statistics. Do not change the existing client key, aliases, or port.
 
 Start the private site in the background so it survives SSH disconnects:
 
@@ -75,7 +70,7 @@ Start the private site in the background so it survives SSH disconnects:
 tailscale serve status
 ```
 
-Open the reported HTTPS MagicDNS URL from a browser on an authorized tailnet device. Tailscale-identified users not in `FABLEMAXXING_ALLOWED_USERS` receive a read-only terminal and cannot invoke Start, Reset, or Stop. Restrict the Serve destination to the presenter identity in the tailnet policy; do not enable Funnel.
+Open the reported HTTPS MagicDNS URL from a browser on an authorized tailnet device. Every Tailscale-identified user is an observer. There are no Start, Reset, or Stop controls, the action endpoint returns HTTP 405, and the optional terminal mirror never accepts input. Restrict the Serve destination in the tailnet policy; do not enable Funnel.
 
 The “Claude → Codex Token Flow” panel reads CLIProxyAPI's localhost-only usage queue. It persists only sanitized token counts, timing, route, model, and status. Raw prompts, API keys, OAuth material, and CLIProxyAPI source identities are never sent to the browser.
 

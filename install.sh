@@ -85,9 +85,8 @@ fi
 if ! grep -q '^export CLAUDEX_MANAGEMENT_KEY=' "${INSTALL_ROOT}/config/demo.env"; then
   printf '\nexport CLAUDEX_MANAGEMENT_KEY="%s"\n' "$(openssl rand -hex 32)" >> "${INSTALL_ROOT}/config/demo.env"
 fi
-if ! grep -q '^export FABLEMAXXING_ALLOWED_USERS=' "${INSTALL_ROOT}/config/demo.env"; then
+if ! grep -q '^export FABLEMAXXING_PORT=' "${INSTALL_ROOT}/config/demo.env"; then
   cat >> "${INSTALL_ROOT}/config/demo.env" <<'EOF'
-export FABLEMAXXING_ALLOWED_USERS=""
 export FABLEMAXXING_PORT="3000"
 export FABLEMAXXING_ALLOW_LOCAL="0"
 EOF

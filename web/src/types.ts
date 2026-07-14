@@ -15,7 +15,7 @@ export interface TokenEvent {
 }
 
 export interface Snapshot {
-  identity: { user: string; displayName: string; role: "presenter" | "viewer"; viaTailscale: boolean };
+  identity: { user: string; displayName: string; role: "viewer"; viaTailscale: boolean };
   session: { name: string; running: boolean; proxyHealthy: boolean };
   route: { alias: string; model: string };
   tokenEvents: TokenEvent[];

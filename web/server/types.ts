@@ -1,4 +1,4 @@
-export type AccessRole = "presenter" | "viewer";
+export type AccessRole = "viewer";
 
 export interface SessionIdentity {
   user: string;

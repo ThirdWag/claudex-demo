@@ -22,7 +22,7 @@ export function StatusPanel({ snapshot }: { snapshot: Snapshot }) {
           <HealthRow label="Environment" healthy={snapshot.identity.viaTailscale} value={snapshot.identity.viaTailscale ? "Tailnet" : "Local"} />
           <HealthRow label="CLIProxyAPI" healthy={snapshot.session.proxyHealthy} value={snapshot.session.proxyHealthy ? "Connected" : "Stopped"} />
           <HealthRow label="Codex route" healthy={snapshot.session.proxyHealthy} value={snapshot.route.model} />
-          <HealthRow label="Claude session" healthy={snapshot.session.running} value={snapshot.session.running ? "Running" : "Stopped"} />
+          <HealthRow label="Observed tmux" healthy={snapshot.session.running} value={snapshot.session.running ? "Attached" : "Not found"} />
         </div>
         <div className="token-meters">
           <h3>Session Token Totals</h3>

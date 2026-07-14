@@ -14,8 +14,8 @@ The sanitized viewer is not a substitute for reviewing raw logs before a public 
 
 - The web backend listens only on `127.0.0.1:3000` and is exposed privately with Tailscale Serve.
 - Requests without Tailscale identity headers are rejected unless explicit local-development mode is enabled.
-- Only logins listed in `FABLEMAXXING_ALLOWED_USERS` can type in the terminal or invoke lifecycle actions.
-- Mutations and terminal WebSocket upgrades require a same-origin request.
-- CLIProxyAPI remote management remains disabled; the backend polls its authenticated usage queue over localhost.
+- Every identified tailnet user is read-only; FableMaxxing exposes no lifecycle controls or writable terminal path.
+- The action endpoint always returns HTTP 405, and terminal WebSocket upgrades require a same-origin request plus an existing tmux session.
+- The backend polls CLIProxyAPI's authenticated management usage queue over localhost and never controls the proxy service.
 - Raw usage records are reduced to token counts, latency, provider/model route, endpoint, and success state before mode-`0600` persistence.
 - Never enable Tailscale Funnel for this service.

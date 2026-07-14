@@ -66,6 +66,7 @@ with path.open("wb") as handle:
 PY
     chmod 600 "${plist}"
     launchctl bootout "${domain}/${label}" 2>/dev/null || true
+    sleep 1
     launchctl bootstrap "${domain}" "${plist}"
     sleep 0.5
     launchctl print "${domain}/${label}" >/dev/null

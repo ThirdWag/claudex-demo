@@ -3,7 +3,7 @@ import { extname, resolve, sep } from "node:path";
 import * as pty from "node-pty";
 import { identityFromRequest, isSameOrigin } from "./security";
 import { sanitizeUsageRecord, TokenStore } from "./telemetry";
-import type { AccessRole, SessionIdentity } from "./types";
+import type { SessionIdentity } from "./types";
 
 const root = process.env.CLAUDEX_ROOT ?? resolve(import.meta.dir, "../..");
 const repo = process.env.CLAUDEX_REPO ?? resolve(root, "repo/cre-api-demo");
@@ -51,10 +51,6 @@ async function capture(command: string[], cwd = root) {
     child.exited,
   ]);
   return { stdout: stdout.trim(), stderr: stderr.trim(), exitCode };
-}
-
-async function runScript(path: string) {
-  return capture([path]);
 }
 
 async function proxyHealthy() {
@@ -129,45 +125,10 @@ async function snapshot(identity: SessionIdentity) {
   };
 }
 
-let actionInFlight = false;
-function actionMessage(label: string, result: Awaited<ReturnType<typeof runScript>>) {
-  if (result.exitCode === 0) return `${label} complete.`;
-  const detail = (result.stderr || result.stdout || "Check the remote console log.")
-    .split("\n")
-    .filter(Boolean)
-    .slice(-4)
-    .join("\n");
-  return `${label} failed.\n${detail}`;
-}
-
-async function performAction(action: string) {
-  if (actionInFlight) return { ok: false, message: "Another action is already running." };
-  actionInFlight = true;
-  try {
-    if (action === "start") {
-      await store.clear();
-      const result = await runScript(resolve(root, "scripts/start-web-demo.sh"));
-      return { ok: result.exitCode === 0, message: actionMessage("Start", result) };
-    }
-    if (action === "reset") {
-      await capture(["tmux", "kill-session", "-t", session]);
-      await store.clear();
-      const result = await runScript(resolve(root, "bin/demo-reset"));
-      return { ok: result.exitCode === 0, message: actionMessage("Reset", result) };
-    }
-    if (action === "stop") {
-      const result = await runScript(resolve(root, "scripts/stop-demo.sh"));
-      return { ok: result.exitCode === 0, message: actionMessage("Stop", result) };
-    }
-    return { ok: false, message: "Unsupported action." };
-  } finally {
-    actionInFlight = false;
-  }
-}
-
 let polling = false;
+let managementUnavailable = false;
 async function pollUsage() {
-  if (polling) return;
+  if (polling || managementUnavailable) return;
   const key = process.env.CLAUDEX_MANAGEMENT_KEY;
   const url = process.env.CLAUDEX_PROXY_URL;
   if (!key || !url) return;
@@ -177,6 +138,11 @@ async function pollUsage() {
       headers: { Authorization: `Bearer ${key}` },
       signal: AbortSignal.timeout(2500),
     });
+    if (response.status === 401 || response.status === 403) {
+      managementUnavailable = true;
+      console.error(`Usage telemetry disabled after management authentication returned HTTP ${response.status}.`);
+      return;
+    }
     if (!response.ok) return;
     const records = await response.json();
     if (!Array.isArray(records)) return;
@@ -192,7 +158,7 @@ async function pollUsage() {
     polling = false;
   }
 }
-setInterval(pollUsage, 1000);
+setInterval(pollUsage, 1500);
 void pollUsage();
 
 const mimeTypes: Record<string, string> = {
@@ -214,19 +180,14 @@ const server = Bun.serve<SocketData>({
 
     if (url.pathname === "/ws/terminal") {
       if (!isSameOrigin(request)) return new Response("Invalid origin.", { status: 403 });
+      if (!(await tmuxRunning())) return new Response("No tmux session to observe.", { status: 409 });
       return server.upgrade(request, { data: { identity } })
         ? undefined
         : new Response("WebSocket upgrade failed.", { status: 400 });
     }
 
     if (url.pathname === "/api/snapshot") return json(await snapshot(identity));
-    if (url.pathname === "/api/action" && request.method === "POST") {
-      if (identity.role !== "presenter") return json({ ok: false, message: "Presenter access required." }, 403);
-      if (!isSameOrigin(request)) return json({ ok: false, message: "Invalid origin." }, 403);
-      const body = await request.json().catch(() => ({})) as { action?: string };
-      const result = await performAction(body.action ?? "");
-      return json(result, result.ok ? 200 : 409);
-    }
+    if (url.pathname === "/api/action") return json({ ok: false, message: "FableMaxxing is display-only." }, 405);
 
     const requested = url.pathname === "/" ? "index.html" : url.pathname.slice(1);
     const filePath = resolve(dist, requested);
@@ -260,9 +221,6 @@ const server = Bun.serve<SocketData>({
       }
       if (payload.type === "resize" && payload.cols && payload.rows) {
         socket.data.terminal?.resize(Math.min(payload.cols, 240), Math.min(payload.rows, 80));
-      }
-      if (payload.type === "input" && socket.data.identity.role === "presenter" && payload.data) {
-        socket.data.terminal?.write(payload.data.slice(0, 4096));
       }
     },
     close(socket) {

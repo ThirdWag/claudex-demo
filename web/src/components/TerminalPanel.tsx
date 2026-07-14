@@ -4,20 +4,19 @@ import { FitAddon } from "@xterm/addon-fit";
 
 interface Props {
   running: boolean;
-  presenter: boolean;
   alias: string;
   model: string;
 }
 
-export function TerminalPanel({ running, presenter, alias, model }: Props) {
+export function TerminalPanel({ running, alias, model }: Props) {
   const container = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!container.current || !running) return;
     const terminal = new Terminal({
-      cursorBlink: presenter,
+      cursorBlink: false,
       cursorStyle: "bar",
-      disableStdin: !presenter,
+      disableStdin: true,
       fontFamily: '"SFMono-Regular", "Cascadia Code", Menlo, monospace',
       fontSize: 13,
       lineHeight: 1.45,
@@ -52,9 +51,6 @@ export function TerminalPanel({ running, presenter, alias, model }: Props) {
       });
     };
     connect();
-    const input = terminal.onData((data) => {
-      if (presenter && socket?.readyState === WebSocket.OPEN) socket.send(JSON.stringify({ type: "input", data }));
-    });
     const resize = new ResizeObserver(() => {
       fit.fit();
       if (socket?.readyState === WebSocket.OPEN) socket.send(JSON.stringify({ type: "resize", cols: terminal.cols, rows: terminal.rows }));
@@ -64,11 +60,10 @@ export function TerminalPanel({ running, presenter, alias, model }: Props) {
     return () => {
       if (retry) window.clearTimeout(retry);
       resize.disconnect();
-      input.dispose();
       socket?.close();
       terminal.dispose();
     };
-  }, [presenter, running]);
+  }, [running]);
 
   return (
     <section className="panel terminal-panel">
@@ -79,9 +74,9 @@ export function TerminalPanel({ running, presenter, alias, model }: Props) {
         <div className="route-summary"><span>Harness: Claude Code</span><span>Verified route: {alias} → {model}</span></div>
       </div>
       <div className="terminal-stage" ref={container}>
-        {!running && <div className="empty-terminal"><strong>Session stopped</strong><span>A presenter can start the disposable demo session.</span></div>}
+        {!running && <div className="empty-terminal"><strong>No observed tmux session</strong><span>FableMaxxing never starts or controls Claude Code.</span></div>}
       </div>
-      <div className="terminal-footer"><span>{presenter ? "Keyboard enabled" : "Input locked"}</span><span>Terminal: xterm-256color</span></div>
+      <div className="terminal-footer"><span>Read-only mirror</span><span>Terminal: xterm-256color</span></div>
     </section>
   );
 }
