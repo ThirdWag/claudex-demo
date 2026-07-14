@@ -46,7 +46,7 @@ else
 fi
 
 for spec in "cliproxyapi:CLIProxyAPI" "claude:Claude Code" "bun:Bun" "git:Git" "tmux:tmux" \
-  "curl:curl" "python3:Python 3" "rg:ripgrep"; do
+  "curl:curl" "python3:Python 3"; do
   command_name="${spec%%:*}"
   label="${spec#*:}"
   if have "${command_name}" || { [[ "${command_name}" == cliproxyapi ]] && have cli-proxy-api; }; then
@@ -82,7 +82,7 @@ else
 fi
 
 if [[ -d "${HOME}/.cli-proxy-api" ]] && find "${HOME}/.cli-proxy-api" \
-  -path '*/logs' -prune -o -maxdepth 2 -type f -name '*.json' -print -quit 2>/dev/null | rg -q .; then
+  -path '*/logs' -prune -o -maxdepth 2 -type f -name '*.json' -print -quit 2>/dev/null | grep -q .; then
   pass "Codex authentication material found"
 else
   fail "Codex authentication material found under ~/.cli-proxy-api"
@@ -149,7 +149,7 @@ else
   warn "Verify sleep is disabled on AC power before presenting"
 fi
 
-if fdesetup status 2>/dev/null | rg -q '^FileVault is On'; then
+if fdesetup status 2>/dev/null | grep -q '^FileVault is On'; then
   pass "FileVault enabled"
 else
   fail "FileVault enabled"

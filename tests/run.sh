@@ -78,9 +78,9 @@ cat > "${TMP}/mock-bin/cliproxyapi" <<'EOF'
 set -euo pipefail
 [[ "$1" == "-config" ]]
 [[ -f "$2" ]]
-rg -q '^host: "127\.0\.0\.1"$' "$2"
-rg -q 'name: "gpt-test"' "$2"
-rg -q 'alias: "claudex-demo"' "$2"
+grep -E -q '^host: "127\.0\.0\.1"$' "$2"
+grep -q 'name: "gpt-test"' "$2"
+grep -q 'alias: "claudex-demo"' "$2"
 EOF
 chmod +x "${TMP}/mock-bin/cliproxyapi"
 PATH="${TMP}/mock-bin:${PATH}" CLAUDEX_ROOT="${ROOT}" "${ROOT}/scripts/launch-proxy.sh"
@@ -95,10 +95,10 @@ redacted="$(printf '%s\n' \
   'api_key=super-secret-value' \
   'refresh-token: another-secret' | \
   sed -E -f "${ROOT}/config/proxy-log-redactions.sed")"
-if printf '%s\n' "${redacted}" | rg -q 'abc\.DEF|super-secret|another-secret'; then
+if printf '%s\n' "${redacted}" | grep -E -q 'abc\.DEF|super-secret|another-secret'; then
   fail "proxy log redaction"
 fi
-[[ "$(printf '%s\n' "${redacted}" | rg -o '\[REDACTED\]' | wc -l | tr -d ' ')" == "3" ]] \
+[[ "$(printf '%s\n' "${redacted}" | grep -o '\[REDACTED\]' | wc -l | tr -d ' ')" == "3" ]] \
   || fail "proxy log redaction count"
 pass "proxy log secrets are redacted"
 

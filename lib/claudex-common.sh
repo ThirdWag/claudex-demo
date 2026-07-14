@@ -104,7 +104,7 @@ claudex_test_baseline() {
 claudex_tracked_secret_findings() {
   local repo="$1"
   local filename_findings content_findings
-  filename_findings="$(git -C "${repo}" ls-files | rg -i \
+  filename_findings="$(git -C "${repo}" ls-files | grep -E -i \
     '(^|/)(\.env($|\.)|.*credentials.*|.*secrets?.*|id_[a-z0-9_]+)$' || true)"
   content_findings="$(git -C "${repo}" grep -I -n -E \
     '(BEGIN (RSA|OPENSSH|EC) PRIVATE KEY|ghp_[A-Za-z0-9]{20,}|sk-[A-Za-z0-9]{20,}|AKIA[0-9A-Z]{16})' \
