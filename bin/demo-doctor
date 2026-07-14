@@ -57,7 +57,7 @@ for spec in "cliproxyapi:CLIProxyAPI" "claude:Claude Code" "bun:Bun" "git:Git" "
 done
 
 required=(CLAUDEX_PROXY_KEY CLAUDEX_CODEX_MODEL CLAUDEX_PROXY_URL CLAUDEX_HARNESS_MODEL \
-  CLAUDEX_REPO CLAUDEX_BASELINE_TAG CLAUDEX_WORK_BRANCH)
+  CLAUDEX_MANAGEMENT_KEY CLAUDEX_REPO CLAUDEX_BASELINE_TAG CLAUDEX_WORK_BRANCH)
 missing=()
 for name in "${required[@]}"; do
   [[ -n "${!name:-}" ]] || missing+=("${name}")

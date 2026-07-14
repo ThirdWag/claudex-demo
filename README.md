@@ -33,3 +33,22 @@ bash tests/run.sh
 ```
 
 The test suite uses a temporary home directory and never touches the installed demo environment.
+
+## Private browser console
+
+FableMaxxing is the browser presentation surface for the same remote-Mac demo. It provides a live Claude Code terminal, real CLIProxyAPI token accounting, repository/test status, and presenter-only controls through Tailscale Serve.
+
+On the remote Mac, set the presenter identity in `~/claudex-demo/config/demo.env`:
+
+```bash
+export FABLEMAXXING_ALLOWED_USERS="presenter@example.com"
+```
+
+Then update the installed files and start the private site:
+
+```bash
+./install.sh
+~/claudex-demo/bin/demo-web --background
+```
+
+The command prints the private `https://<device>.<tailnet>.ts.net` URL. The web backend and CLIProxyAPI remain bound to localhost. Do not use Tailscale Funnel.

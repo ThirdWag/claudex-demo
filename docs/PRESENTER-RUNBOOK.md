@@ -59,6 +59,26 @@ The demo command must own the proxy process so its routing evidence appears in t
 
 Use [LIVE-DEMO-PROMPT.md](LIVE-DEMO-PROMPT.md) in the large Claude Code pane. Verify that both the primary request and subagent requests appear in the sanitized log pane.
 
+### Browser presentation with FableMaxxing
+
+Set the exact Tailscale login allowed to control the demo:
+
+```bash
+nano ~/claudex-demo/config/demo.env
+# export FABLEMAXXING_ALLOWED_USERS="presenter@example.com"
+```
+
+Start the private site in the background so it survives SSH disconnects:
+
+```bash
+~/claudex-demo/bin/demo-web --background
+tailscale serve status
+```
+
+Open the reported HTTPS MagicDNS URL from a browser on an authorized tailnet device. Tailscale-identified users not in `FABLEMAXXING_ALLOWED_USERS` receive a read-only terminal and cannot invoke Start, Reset, or Stop. Restrict the Serve destination to the presenter identity in the tailnet policy; do not enable Funnel.
+
+The “Claude → Codex Token Flow” panel reads CLIProxyAPI's localhost-only usage queue. It persists only sanitized token counts, timing, route, model, and status. Raw prompts, API keys, OAuth material, and CLIProxyAPI source identities are never sent to the browser.
+
 ## 5. Narration
 
 Opening: Claude Code is the agent harness. It manages repository tools and orchestration. It sends a model alias to a localhost compatibility endpoint, while the adjacent proxy evidence shows the configured Codex route. Model self-description is not proof.

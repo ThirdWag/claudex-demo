@@ -1,0 +1,51 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+# shellcheck source=../lib/claudex-common.sh
+source "${ROOT}/lib/claudex-common.sh"
+claudex_load_env
+claudex_require_env CLAUDEX_MANAGEMENT_KEY FABLEMAXXING_PORT
+
+configure_serve=1
+background=0
+while (( $# )); do
+  case "$1" in
+    --no-serve) configure_serve=0 ;;
+    --background) background=1 ;;
+    *) echo "Usage: demo-web [--background] [--no-serve]" >&2; exit 2 ;;
+  esac
+  shift
+done
+
+if [[ ! -f "${CLAUDEX_ROOT}/web/dist/index.html" ]]; then
+  (cd "${CLAUDEX_ROOT}/web" && bun install --frozen-lockfile --no-progress && bun run build)
+fi
+
+if (( configure_serve )); then
+  tailscale_bin=""
+  if command -v tailscale >/dev/null 2>&1; then
+    tailscale_bin="$(command -v tailscale)"
+  elif [[ -x /Applications/Tailscale.app/Contents/MacOS/Tailscale ]]; then
+    tailscale_bin="/Applications/Tailscale.app/Contents/MacOS/Tailscale"
+  fi
+  [[ -n "${tailscale_bin}" ]] || { echo "Tailscale CLI not found." >&2; exit 1; }
+  "${tailscale_bin}" serve --bg "${FABLEMAXXING_PORT}"
+fi
+
+if (( background )); then
+  pid_file="${CLAUDEX_ROOT}/state/web.pid"
+  if [[ -f "${pid_file}" ]] && kill -0 "$(<"${pid_file}")" 2>/dev/null; then
+    echo "FableMaxxing is already running (pid $(<"${pid_file}"))."
+    exit 0
+  fi
+  nohup "${CLAUDEX_ROOT}/bin/demo-web" --no-serve >> "${CLAUDEX_ROOT}/logs/web.log" 2>&1 &
+  web_pid=$!
+  echo "${web_pid}" > "${pid_file}"
+  chmod 600 "${pid_file}"
+  echo "FableMaxxing started in the background (pid ${web_pid})."
+  exit 0
+fi
+
+cd "${CLAUDEX_ROOT}/web"
+exec bun run server

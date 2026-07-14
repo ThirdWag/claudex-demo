@@ -9,3 +9,13 @@
 - `demo-reset` refuses to operate without the dedicated marker and fails on credential-like tracked filenames, recognized secret content, or untracked credential files.
 
 The sanitized viewer is not a substitute for reviewing raw logs before a public presentation. Keep HTTP body logging disabled unless all prompts and repository contents are confirmed safe.
+
+## FableMaxxing browser boundary
+
+- The web backend listens only on `127.0.0.1:3000` and is exposed privately with Tailscale Serve.
+- Requests without Tailscale identity headers are rejected unless explicit local-development mode is enabled.
+- Only logins listed in `FABLEMAXXING_ALLOWED_USERS` can type in the terminal or invoke lifecycle actions.
+- Mutations and terminal WebSocket upgrades require a same-origin request.
+- CLIProxyAPI remote management remains disabled; the backend polls its authenticated usage queue over localhost.
+- Raw usage records are reduced to token counts, latency, provider/model route, endpoint, and success state before mode-`0600` persistence.
+- Never enable Tailscale Funnel for this service.

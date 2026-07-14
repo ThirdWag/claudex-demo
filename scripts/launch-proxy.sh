@@ -5,7 +5,7 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 # shellcheck source=../lib/claudex-common.sh
 source "${ROOT}/lib/claudex-common.sh"
 claudex_load_env
-claudex_require_env CLAUDEX_PROXY_KEY CLAUDEX_CODEX_MODEL CLAUDEX_HARNESS_MODEL
+claudex_require_env CLAUDEX_PROXY_KEY CLAUDEX_MANAGEMENT_KEY CLAUDEX_CODEX_MODEL CLAUDEX_HARNESS_MODEL
 
 TEMPLATE="${CLAUDEX_ROOT}/config/cliproxyapi.yaml"
 RUNTIME_CONFIG="${CLAUDEX_ROOT}/state/cliproxyapi.runtime.yaml"
@@ -26,6 +26,7 @@ import sys
 source = pathlib.Path(sys.argv[1]).read_text()
 values = {
     "CLAUDEX_PROXY_KEY_JSON": os.environ.get("CLAUDEX_PROXY_KEY"),
+    "CLAUDEX_MANAGEMENT_KEY_JSON": os.environ.get("CLAUDEX_MANAGEMENT_KEY"),
     "CLAUDEX_CODEX_MODEL_JSON": os.environ.get("CLAUDEX_CODEX_MODEL"),
     "CLAUDEX_HARNESS_MODEL_JSON": os.environ.get("CLAUDEX_HARNESS_MODEL"),
 }
