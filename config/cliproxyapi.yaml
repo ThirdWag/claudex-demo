@@ -1,0 +1,26 @@
+host: "127.0.0.1"
+port: 8317
+auth-dir: "~/.cli-proxy-api"
+
+api-keys:
+  - ${CLAUDEX_PROXY_KEY_JSON}
+
+debug: false
+ws-auth: true
+
+codex:
+  identity-confuse: false
+
+oauth-model-alias:
+  codex:
+    - name: ${CLAUDEX_CODEX_MODEL_JSON}
+      alias: ${CLAUDEX_HARNESS_MODEL_JSON}
+      force-mapping: true
+
+payload:
+  override:
+    - models:
+        - name: ${CLAUDEX_CODEX_MODEL_JSON}
+          protocol: "codex"
+      params:
+        "reasoning.effort": "high"

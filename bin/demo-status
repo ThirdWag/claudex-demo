@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+# shellcheck source=../lib/claudex-common.sh
+source "${ROOT}/lib/claudex-common.sh"
+claudex_load_env
+
+printf 'CLAUDEX DEMO STATUS\n\n'
+printf 'Time: %s\n' "$(date '+%Y-%m-%d %H:%M:%S %Z')"
+printf 'Proxy: '
+if pid="$(claudex_proxy_pid 2>/dev/null)"; then
+  printf 'running (pid %s)\n' "${pid}"
+elif claudex_model_list >/dev/null 2>&1; then
+  printf 'reachable (externally managed)\n'
+else
+  printf 'stopped or unavailable\n'
+fi
+printf 'Alias: %s\n' "${CLAUDEX_HARNESS_MODEL:-unset}"
+printf 'Configured backend: %s\n' "${CLAUDEX_CODEX_MODEL:-unset}"
+
+if [[ -d "${CLAUDEX_REPO}/.git" ]]; then
+  cd "${CLAUDEX_REPO}"
+  printf 'Branch: %s\n' "$(git branch --show-current 2>/dev/null || echo detached)"
+  printf 'HEAD: %s\n' "$(git rev-parse --short HEAD)"
+  printf '\nDiff stat:\n'
+  git diff --stat || true
+  printf '\nWorking tree:\n'
+  git status --short || true
+else
+  printf 'Repository: missing\n'
+fi

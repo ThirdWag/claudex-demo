@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+LOG="${CLAUDEX_ROOT:-${ROOT}}/logs/proxy.log"
+mkdir -p "$(dirname "${LOG}")"
+touch "${LOG}"
+
+tail -n 100 -F "${LOG}" | sed -E -f "${CLAUDEX_ROOT:-${ROOT}}/config/proxy-log-redactions.sed"

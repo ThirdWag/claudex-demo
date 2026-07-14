@@ -1,0 +1,53 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+# shellcheck source=../lib/claudex-common.sh
+source "${ROOT}/lib/claudex-common.sh"
+claudex_load_env
+claudex_require_env CLAUDEX_REPO CLAUDEX_BASELINE_TAG CLAUDEX_WORK_BRANCH
+
+[[ -f "${CLAUDEX_REPO}/.claudex-demo-repo" ]] || {
+  echo "Refusing reset: ${CLAUDEX_REPO} is not marked as a Claudex demo repository." >&2
+  exit 1
+}
+
+cd "${CLAUDEX_REPO}"
+git rev-parse --verify "refs/tags/${CLAUDEX_BASELINE_TAG}" >/dev/null 2>&1 || {
+  echo "Missing baseline tag: ${CLAUDEX_BASELINE_TAG}" >&2
+  exit 1
+}
+
+tracked_sensitive="$(claudex_tracked_secret_findings "${CLAUDEX_REPO}")"
+if [[ -n "${tracked_sensitive}" ]]; then
+  echo "Potential credentials are tracked:" >&2
+  printf '%s\n' "${tracked_sensitive}" >&2
+  exit 1
+fi
+
+untracked_sensitive="$(find . -path './.git' -prune -o -path './node_modules' -prune -o -type f \
+  \( -name '.env' -o -name '.env.*' -o -iname '*credential*' -o -iname '*secret*' \
+  -o -name 'id_rsa' -o -name 'id_ed25519' \) -print)"
+if [[ -n "${untracked_sensitive}" ]]; then
+  echo "Potential untracked credentials must be removed manually before reset:" >&2
+  printf '%s\n' "${untracked_sensitive}" >&2
+  exit 1
+fi
+
+git switch --detach -q "${CLAUDEX_BASELINE_TAG}"
+git reset --hard -q "${CLAUDEX_BASELINE_TAG}"
+git clean -ffdxq
+git branch -D "${CLAUDEX_WORK_BRANCH}" >/dev/null 2>&1 || true
+git switch -q -c "${CLAUDEX_WORK_BRANCH}" "${CLAUDEX_BASELINE_TAG}"
+
+rm -rf .next coverage test-results playwright-report
+bun install --frozen-lockfile --no-progress >/dev/null
+bun run test:demo
+
+if [[ -n "$(git status --porcelain)" ]]; then
+  echo "Reset did not produce a clean repository." >&2
+  git status --short >&2
+  exit 1
+fi
+
+echo "Reset ${CLAUDEX_REPO} to ${CLAUDEX_BASELINE_TAG} on ${CLAUDEX_WORK_BRANCH}"

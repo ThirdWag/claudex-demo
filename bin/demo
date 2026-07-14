@@ -1,0 +1,62 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+# shellcheck source=../lib/claudex-common.sh
+source "${ROOT}/lib/claudex-common.sh"
+claudex_load_env
+
+attach=1
+if [[ "${1:-}" == "--no-attach" ]]; then
+  attach=0
+elif [[ $# -gt 0 ]]; then
+  echo "Usage: demo [--no-attach]" >&2
+  exit 2
+fi
+
+"${CLAUDEX_ROOT}/bin/demo-doctor" --preflight
+"${CLAUDEX_ROOT}/bin/demo-reset"
+
+if claudex_model_list >/dev/null 2>&1; then
+  if ! claudex_proxy_pid >/dev/null 2>&1; then
+    echo "Port 8317 is served by an external CLIProxyAPI instance." >&2
+    echo "Stop that instance so the demo can own and display its routing log." >&2
+    exit 1
+  fi
+  : > "${CLAUDEX_ROOT}/logs/proxy.log"
+else
+  if claudex_proxy_pid >/dev/null 2>&1; then
+    echo "A managed proxy process exists but is not healthy." >&2
+    exit 1
+  fi
+  : > "${CLAUDEX_ROOT}/logs/proxy.log"
+  nohup "${CLAUDEX_ROOT}/scripts/launch-proxy.sh" >/dev/null 2>&1 &
+  disown || true
+  if ! claudex_wait_for_proxy 30; then
+    echo "CLIProxyAPI did not become healthy; inspect ${CLAUDEX_ROOT}/logs/proxy.log" >&2
+    exit 1
+  fi
+fi
+
+"${CLAUDEX_ROOT}/bin/demo-doctor"
+"${CLAUDEX_ROOT}/scripts/verify-routing.sh"
+
+session="${CLAUDEX_TMUX_SESSION:-claudex}"
+tmux kill-session -t "${session}" 2>/dev/null || true
+tmux new-session -d -s "${session}" -n demo -c "${CLAUDEX_REPO}" \
+  "${CLAUDEX_ROOT}/scripts/launch-claudex.sh"
+tmux split-window -h -t "${session}:demo" -c "${CLAUDEX_REPO}" \
+  "${CLAUDEX_ROOT}/bin/proxy-log"
+tmux select-pane -t "${session}:demo.0"
+tmux split-window -v -t "${session}:demo.0" -c "${CLAUDEX_REPO}" \
+  "bun test --watch"
+tmux select-pane -t "${session}:demo.1"
+tmux split-window -v -t "${session}:demo.1" -c "${CLAUDEX_REPO}" \
+  "while true; do clear; '${CLAUDEX_ROOT}/bin/demo-status'; sleep 2; done"
+tmux select-pane -t "${session}:demo.0"
+tmux set-option -t "${session}" remain-on-exit on >/dev/null
+
+if (( attach )); then
+  exec tmux attach-session -t "${session}"
+fi
+echo "Demo session ready: tmux attach -t ${session}"
