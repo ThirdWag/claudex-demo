@@ -69,6 +69,13 @@ export function tokenTotals(events: TokenEvent[]): TokenTotals {
   );
 }
 
+export function spendTotals(events: TokenEvent[]) {
+  return {
+    fable: tokenTotals(events.filter((event) => providerForEvent(event) === "claude")),
+    openai: tokenTotals(events.filter((event) => providerForEvent(event) === "codex")),
+  };
+}
+
 export function attestRoute(
   events: TokenEvent[],
   requestedAlias: string,

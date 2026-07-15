@@ -16,6 +16,9 @@ const emptySnapshot: Snapshot = {
   herdr: { healthy: false, version: "unavailable", agents: [] },
   route: { requestedAlias: "claudex-demo", expectedProvider: "codex", expectedModel: "gpt-5.6-sol", actualProvider: "unknown", upstreamModel: "", verifiedAt: null, status: "unverified" },
   tokenEvents: [],
+  routeTokenTotals: zeroTotals,
+  providerTotals: { fable: zeroTotals, openai: zeroTotals },
+  spendModels: { fable: [], openai: [] },
   tokenTotals: zeroTotals,
 };
 
@@ -66,7 +69,7 @@ export function App() {
       <div className="dashboard">
         <AgentRail agents={snapshot.herdr.agents} healthy={snapshot.services.herdrHealthy} version={snapshot.herdr.version} />
         <AgentFlow snapshot={snapshot} live={live} />
-        <ProviderTotals totals={snapshot.tokenTotals} route={snapshot.route} />
+        <ProviderTotals totals={snapshot.providerTotals} combined={snapshot.tokenTotals} models={snapshot.spendModels} />
         <TokenFlow events={snapshot.tokenEvents} live={live} />
       </div>
 

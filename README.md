@@ -36,7 +36,7 @@ The test suite uses a temporary home directory and never touches the installed d
 
 ## Private browser console
 
-FableMaxxing is a display-only browser surface for the remote Mac. It combines sanitized Herdr agent state with authenticated CLIProxyAPI usage records to show the real request topology: Herdr owns Claude Code, Claude Code requests the single harness alias, and the proxy force-maps that alias to Codex. The dashboard counts only records that attest the expected alias, Codex provider, and backend model; mismatches appear as architecture drift. FableMaxxing never reads prompts or terminal content and never starts, stops, or reconfigures Herdr, the proxy, or Claude Code.
+FableMaxxing is a display-only browser surface for the remote Mac. It combines sanitized Herdr agent state with authenticated CLIProxyAPI usage records. The topology panel verifies that Claude Code's harness alias reaches the expected Codex model and reports mismatches as architecture drift. Separately, the spend ledger compares token usage for every observed Fable/Anthropic call against every OpenAI/Codex call; those totals do not imply that a single request branched to both providers. FableMaxxing never reads prompts or terminal content and never starts, stops, or reconfigures Herdr, the proxy, or Claude Code.
 
 Configure `~/claudex-demo/config/demo.env` with the existing proxy's client key and its localhost management credential. CLIProxyAPI usage statistics must be enabled for token telemetry. Keep both files mode `0600` and never commit their values.
 

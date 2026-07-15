@@ -44,5 +44,8 @@ export interface Snapshot {
     status: "verified" | "drift" | "unverified";
   };
   tokenEvents: TokenEvent[];
+  routeTokenTotals: TokenTotals;
+  providerTotals: { fable: TokenTotals; openai: TokenTotals };
+  spendModels: { fable: string[]; openai: string[] };
   tokenTotals: TokenTotals;
 }

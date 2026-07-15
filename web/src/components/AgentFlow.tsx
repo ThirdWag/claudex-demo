@@ -5,13 +5,13 @@ const compact = (value: number) => value >= 1_000_000
   : value >= 1000 ? `${(value / 1000).toFixed(1)}k` : String(value);
 
 function CodexNode({ snapshot }: { snapshot: Snapshot }) {
-  const { route, tokenTotals } = snapshot;
+  const { route, routeTokenTotals } = snapshot;
   return (
     <article className={`flow-node provider-node codex ${route.status}`}>
       <span className="node-icon" aria-hidden="true">O</span>
       <div><small>Codex upstream</small><strong>{route.upstreamModel || route.expectedModel}</strong></div>
       <span className={`node-status ${route.status === "verified" ? "good" : route.status === "drift" ? "bad" : "neutral"}`}>{route.status}</span>
-      <dl><div><dt>Tokens</dt><dd>{compact(tokenTotals.totalTokens)}</dd></div><div><dt>Requests</dt><dd>{tokenTotals.requests}</dd></div></dl>
+      <dl><div><dt>Tokens</dt><dd>{compact(routeTokenTotals.totalTokens)}</dd></div><div><dt>Requests</dt><dd>{routeTokenTotals.requests}</dd></div></dl>
     </article>
   );
 }

@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { attestRoute, providerForEvent, publicTokenEvent, sanitizeUsageRecord, tokenTotals, verifiedRouteEvents } from "./telemetry";
+import { attestRoute, providerForEvent, publicTokenEvent, sanitizeUsageRecord, spendTotals, tokenTotals, verifiedRouteEvents } from "./telemetry";
 
 describe("usage telemetry sanitization", () => {
   test("keeps token accounting and drops credentials and identity", () => {
@@ -96,6 +96,16 @@ describe("usage telemetry sanitization", () => {
     expect(route.status).toBe("drift");
     expect(route.actualProvider).toBe("claude");
     expect(verifiedRouteEvents([event], route)).toEqual([]);
+  });
+
+  test("keeps Fable and OpenAI spend in independent ledgers", () => {
+    const fable = sanitizeUsageRecord({ provider: "anthropic", model: "claude-fable-5", tokens: { total_tokens: 120 } });
+    const openai = sanitizeUsageRecord({ provider: "codex", model: "gpt-5.6-sol", tokens: { total_tokens: 880 } });
+    const totals = spendTotals([fable, openai]);
+    expect(totals.fable.totalTokens).toBe(120);
+    expect(totals.fable.requests).toBe(1);
+    expect(totals.openai.totalTokens).toBe(880);
+    expect(totals.openai.requests).toBe(1);
   });
 
   test("sums the session token dimensions", () => {

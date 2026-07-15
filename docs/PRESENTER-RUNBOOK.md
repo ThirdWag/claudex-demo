@@ -72,7 +72,7 @@ tailscale serve status
 
 Open the reported HTTPS MagicDNS URL from a browser on an authorized tailnet device. Every Tailscale-identified user is an observer. There are no Start, Reset, or Stop controls; the action and legacy terminal endpoints return HTTP 405. Restrict the Serve destination in the tailnet policy; do not enable Funnel.
 
-The “Agent Request Flow” panel combines Herdr's socket API with authenticated CLIProxyAPI usage records. It shows Claude Code as the harness inside Herdr, the single proxy alias, and the Codex upstream verified by the latest matching usage record. A provider/model mismatch is shown as architecture drift and its tokens are excluded. Raw prompts, paths, workspace labels, request/session/terminal IDs, API keys, OAuth material, and source identities are never sent to the browser.
+The “Agent Request Flow” panel combines Herdr's socket API with authenticated CLIProxyAPI usage records. It shows Claude Code as the harness inside Herdr, the single proxy alias, and the Codex upstream verified by the latest matching usage record. A provider/model mismatch is shown as architecture drift. The separate “Token Spend” panel compares all retained Fable/Anthropic usage with OpenAI/Codex usage without implying a branch in the request topology. Raw prompts, paths, workspace labels, request/session/terminal IDs, API keys, OAuth material, and source identities are never sent to the browser.
 
 ## 5. Narration
 

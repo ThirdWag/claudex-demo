@@ -1,7 +1,7 @@
 import { extname, resolve, sep } from "node:path";
 import { identityFromRequest } from "./security";
 import { readHerdrRuntime } from "./herdr";
-import { attestRoute, publicTokenEvent, sanitizeUsageRecord, TokenStore, tokenTotals, verifiedRouteEvents } from "./telemetry";
+import { attestRoute, providerForEvent, publicTokenEvent, sanitizeUsageRecord, spendTotals, TokenStore, tokenTotals, verifiedRouteEvents } from "./telemetry";
 
 const root = process.env.CLAUDEX_ROOT ?? resolve(import.meta.dir, "../..");
 const port = Number(process.env.FABLEMAXXING_PORT ?? 3000);
@@ -9,7 +9,6 @@ const dist = resolve(import.meta.dir, "../dist");
 const statePath = process.env.FABLEMAXXING_STATE_FILE ?? resolve(root, "state/token-events.json");
 const store = new TokenStore(statePath);
 await store.load();
-const observedSince = Date.now();
 
 if (process.env.FABLEMAXXING_DEMO_DATA === "1" && store.events().length === 0) {
   const now = Date.now();
@@ -53,10 +52,13 @@ async function snapshot(viaTailscale: boolean) {
   const [proxy, herdrRuntime] = await Promise.all([proxyHealthy(), readHerdrRuntime()]);
   const requestedAlias = process.env.CLAUDEX_HARNESS_MODEL ?? "claudex-demo";
   const expectedModel = process.env.CLAUDEX_CODEX_MODEL ?? "gpt-5.6-sol";
-  const observedEvents = store.events().filter((event) => Date.parse(event.timestamp) >= observedSince);
+  const observedEvents = store.events();
   const route = attestRoute(observedEvents, requestedAlias, expectedModel, proxy);
-  const allEvents = verifiedRouteEvents(observedEvents, route);
-  const events = allEvents.slice(-40).reverse();
+  const routeEvents = verifiedRouteEvents(observedEvents, route);
+  const trackedEvents = observedEvents.filter((event) => providerForEvent(event) !== "unknown");
+  const fableEvents = trackedEvents.filter((event) => providerForEvent(event) === "claude");
+  const openaiEvents = trackedEvents.filter((event) => providerForEvent(event) === "codex");
+  const events = trackedEvents.slice(-40).reverse();
   const herdr = herdrRuntime.snapshot;
 
   return {
@@ -66,7 +68,13 @@ async function snapshot(viaTailscale: boolean) {
     herdr,
     route,
     tokenEvents: events.map(publicTokenEvent),
-    tokenTotals: tokenTotals(allEvents),
+    routeTokenTotals: tokenTotals(routeEvents),
+    providerTotals: spendTotals(trackedEvents),
+    spendModels: {
+      fable: [...new Set(fableEvents.map((event) => event.model).filter(Boolean))],
+      openai: [...new Set(openaiEvents.map((event) => event.model).filter(Boolean))],
+    },
+    tokenTotals: tokenTotals(trackedEvents),
   };
 }
 
