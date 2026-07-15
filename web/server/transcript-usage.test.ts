@@ -75,5 +75,10 @@ describe("Claude Code transcript usage", () => {
       requests: 2,
     });
     expect(usage.models.openai).toEqual(["claudex-demo", "gpt-5.6-sol"]);
+    expect(usage.cache).toEqual({
+      fable: { creationTokens: 30, creation1hTokens: 0, readTokens: 40 },
+      openai: { creationTokens: 0, creation1hTokens: 0, readTokens: 8 },
+      unattributed: { creationTokens: 0, creation1hTokens: 0, readTokens: 0 },
+    });
   });
 });

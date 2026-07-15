@@ -10,13 +10,27 @@ export interface TranscriptUsage {
   available: boolean;
   filesRead: number;
   totals: { fable: TokenTotals; openai: TokenTotals; unattributed: TokenTotals };
+  cache: { fable: CacheDimensions; openai: CacheDimensions; unattributed: CacheDimensions };
+  billable: { fable: BillableUsage[]; openai: BillableUsage[] };
   models: { fable: string[]; openai: string[]; unattributed: string[] };
+}
+
+export interface BillableUsage {
+  totals: TokenTotals;
+  cache: CacheDimensions;
+}
+
+export interface CacheDimensions {
+  creationTokens: number;
+  creation1hTokens: number;
+  readTokens: number;
 }
 
 interface UsageRow {
   timestamp: string;
   model: string;
   totals: TokenTotals;
+  cache: CacheDimensions;
 }
 
 const zeroTotals = (): TokenTotals => ({
@@ -40,6 +54,12 @@ const addTotals = (target: TokenTotals, row: TokenTotals) => {
   target.requests += row.requests;
 };
 
+const addCache = (target: CacheDimensions, row: CacheDimensions) => {
+  target.creationTokens += row.creationTokens;
+  target.creation1hTokens += row.creation1hTokens;
+  target.readTokens += row.readTokens;
+};
+
 export function transcriptProvider(model: string, requestedAlias: string, routeVerified: boolean): Provider {
   const normalized = model.trim().toLowerCase();
   if (/fable/.test(normalized)) return "claude";
@@ -58,6 +78,10 @@ function usageRow(raw: UnknownRecord): UsageRow | null {
   const outputTokens = numberValue(usage.output_tokens);
   const cacheCreation = numberValue(usage.cache_creation_input_tokens);
   const cacheRead = numberValue(usage.cache_read_input_tokens);
+  const cacheCreationDetails = usage.cache_creation && typeof usage.cache_creation === "object"
+    ? usage.cache_creation as UnknownRecord
+    : {};
+  const cacheCreation1h = Math.min(cacheCreation, numberValue(cacheCreationDetails.ephemeral_1h_input_tokens));
   return {
     timestamp: raw.timestamp,
     model: message.model.slice(0, 160),
@@ -69,6 +93,7 @@ function usageRow(raw: UnknownRecord): UsageRow | null {
       totalTokens: inputTokens + outputTokens + cacheCreation + cacheRead,
       requests: 1,
     },
+    cache: { creationTokens: cacheCreation, creation1hTokens: cacheCreation1h, readTokens: cacheRead },
   };
 }
 
@@ -101,6 +126,12 @@ export async function readTranscriptUsage(
     available: false,
     filesRead: 0,
     totals: { fable: zeroTotals(), openai: zeroTotals(), unattributed: zeroTotals() },
+    cache: {
+      fable: { creationTokens: 0, creation1hTokens: 0, readTokens: 0 },
+      openai: { creationTokens: 0, creation1hTokens: 0, readTokens: 0 },
+      unattributed: { creationTokens: 0, creation1hTokens: 0, readTokens: 0 },
+    },
+    billable: { fable: [], openai: [] },
     models: { fable: [], openai: [], unattributed: [] },
   };
   if (!Number.isFinite(sinceMs)) return result;
@@ -132,6 +163,8 @@ export async function readTranscriptUsage(
       const provider = transcriptProvider(row.model, requestedAlias, routeVerified);
       const lane = provider === "claude" ? "fable" : provider === "codex" ? "openai" : "unattributed";
       addTotals(result.totals[lane], row.totals);
+      addCache(result.cache[lane], row.cache);
+      if (lane !== "unattributed") result.billable[lane].push({ totals: row.totals, cache: row.cache });
       models[lane].add(row.model);
     }
     result.models = {

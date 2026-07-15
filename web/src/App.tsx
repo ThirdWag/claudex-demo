@@ -22,6 +22,7 @@ const emptySnapshot: Snapshot = {
   unattributedUsage: { totals: zeroTotals, models: [] },
   spendSource: { kind: "claude-code-transcripts", since: new Date(0).toISOString(), updatedAt: new Date(0).toISOString(), available: false, filesRead: 0 },
   reconciliation: { status: "unavailable", proxyObservedTokens: 0, transcriptTokens: 0, coveragePercent: 0, proxyObserved: { fable: zeroTotals, openai: zeroTotals } },
+  cost: null,
   tokenTotals: zeroTotals,
 };
 
@@ -76,7 +77,7 @@ export function App() {
         <TokenFlow events={snapshot.tokenEvents} live={live} />
       </div>
 
-      <footer className="source-note">Spend: sanitized Claude Code usage metadata · Route proof: CLIProxyAPI authenticated records · prompts and transcript content excluded.</footer>
+      <footer className="source-note">Cost: standard API list-price estimate from sanitized Claude Code usage · Route proof: CLIProxyAPI authenticated records · prompts and transcript content excluded.</footer>
     </main>
   );
 }

@@ -4,6 +4,7 @@ import { identityFromRequest } from "./security";
 import { readHerdrRuntime } from "./herdr";
 import { attestRoute, publicTokenEvent, sanitizeUsageRecord, spendProviderForEvent, spendTotals, TokenStore, tokenTotals, verifiedRouteEvents } from "./telemetry";
 import { TranscriptUsageReader } from "./transcript-usage";
+import { estimateSpend } from "./pricing";
 
 const root = process.env.CLAUDEX_ROOT ?? resolve(import.meta.dir, "../..");
 const port = Number(process.env.FABLEMAXXING_PORT ?? 3000);
@@ -105,6 +106,7 @@ async function snapshot(viaTailscale: boolean) {
       coveragePercent,
       proxyObserved: proxyTotals,
     },
+    cost: usage.available ? estimateSpend(providerTotals, usage.cache, usage.billable) : null,
     tokenTotals: tokenTotalsFromProviders(providerTotals.fable, providerTotals.openai),
   };
 }

@@ -62,5 +62,23 @@ export interface Snapshot {
     coveragePercent: number;
     proxyObserved: { fable: TokenTotals; openai: TokenTotals };
   };
+  cost: null | {
+    currency: "USD";
+    basis: "standard-api-list";
+    estimated: true;
+    asOf: string;
+    fable: number;
+    openai: number;
+    actual: number;
+    fableOnlyBaseline: number;
+    savings: number;
+    savingsPercent: number;
+    routedLaneSavingsPercent: number;
+    rates: {
+      asOf: string;
+      fable: { input: number; cacheWrite5m: number; cacheWrite1h: number; cacheRead: number; output: number; longContextThreshold: number | null; longContextInputMultiplier: number; longContextOutputMultiplier: number };
+      openai: { input: number; cacheWrite5m: number; cacheWrite1h: number; cacheRead: number; output: number; longContextThreshold: number | null; longContextInputMultiplier: number; longContextOutputMultiplier: number };
+    };
+  };
   tokenTotals: TokenTotals;
 }
