@@ -2,11 +2,18 @@ host: "127.0.0.1"
 port: 8317
 auth-dir: "~/.cli-proxy-api"
 
+remote-management:
+  allow-remote: false
+  secret-key: ${CLAUDEX_MANAGEMENT_KEY_JSON}
+  disable-control-panel: true
+
 api-keys:
   - ${CLAUDEX_PROXY_KEY_JSON}
 
 debug: false
 ws-auth: true
+usage-statistics-enabled: true
+redis-usage-queue-retention-seconds: 3600
 
 codex:
   identity-confuse: false

@@ -9,3 +9,17 @@
 - `demo-reset` refuses to operate without the dedicated marker and fails on credential-like tracked filenames, recognized secret content, or untracked credential files.
 
 The sanitized viewer is not a substitute for reviewing raw logs before a public presentation. Keep HTTP body logging disabled unless all prompts and repository contents are confirmed safe.
+
+## FableMaxxing browser boundary
+
+- The web backend listens only on its configured `127.0.0.1` port and is exposed privately with Tailscale Serve.
+- Requests without Tailscale identity headers are rejected unless explicit local-development mode is enabled.
+- Every identified tailnet user is read-only; FableMaxxing exposes no lifecycle controls or terminal stream.
+- The action endpoint and legacy terminal WebSocket path always return HTTP 405.
+- The backend polls CLIProxyAPI's authenticated management usage queue over localhost for route evidence and never controls the proxy service.
+- Spend accounting reads Claude Code JSONL files locally but extracts only timestamps, response IDs for in-memory deduplication, model names, and usage counters. Response IDs, paths, session identifiers, prompts, assistant content, and tool calls never enter the snapshot API or persisted observer state.
+- Estimated dollar costs apply configurable standard API list prices to the sanitized usage dimensions. They are same-token counterfactuals, not provider invoices; pricing configuration contains no credentials or individual data.
+- Raw proxy usage records are reduced to token counts, latency, the configured harness alias, provider/model spend classification, route evidence, and success state before mode-`0600` persistence. The browser receives sanitized model names, aggregate spend estimates, and route attestation, but never request IDs, endpoints, source identities, or credentials.
+- Herdr socket snapshots are allowlisted to synthetic agent aliases, agent type, status, focus, and Herdr version. Working directories, workspace labels, terminal IDs, session IDs, and terminal content never cross the browser boundary.
+- Tailscale identity is used only to authorize the request; login and display-name values are not returned by the snapshot API.
+- Never enable Tailscale Funnel for this service.

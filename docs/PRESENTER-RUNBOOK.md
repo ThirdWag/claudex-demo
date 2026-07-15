@@ -55,13 +55,28 @@ Edit `~/claudex-demo/config/demo.env`. Discover the current Codex model from the
 tmux attach -t claudex
 ```
 
-The demo command must own the proxy process so its routing evidence appears in the log pane. Stop any Homebrew-managed or manually launched instance already using port 8317 before rehearsal; the demo will start its own localhost-only process.
+The terminal workflow and the browser observer must use the established CLIProxyAPI service already running on port 8317. Do not stop, replace, or launch another proxy for FableMaxxing.
 
 Use [LIVE-DEMO-PROMPT.md](LIVE-DEMO-PROMPT.md) in the large Claude Code pane. Verify that both the primary request and subagent requests appear in the sanitized log pane.
 
+### Browser presentation with FableMaxxing
+
+FableMaxxing is display-only. Configure its mode-`0600` environment with the existing proxy client key and localhost management credential, and enable CLIProxyAPI usage statistics. Do not change the existing client key, aliases, or port.
+
+Start the private site in the background so it survives SSH disconnects:
+
+```bash
+~/claudex-demo/bin/demo-web --background
+tailscale serve status
+```
+
+Open the reported HTTPS MagicDNS URL from a browser on an authorized tailnet device. Every Tailscale-identified user is an observer. There are no Start, Reset, or Stop controls; the action and legacy terminal endpoints return HTTP 405. Restrict the Serve destination in the tailnet policy; do not enable Funnel.
+
+The “Agent Request Flow” panel combines Herdr's socket API with authenticated CLIProxyAPI usage records. It shows Claude Code as the harness inside Herdr, the single proxy alias, and the Codex upstream verified by the latest matching usage record. A provider/model mismatch is shown as architecture drift. The separate “Estimated Cost” panel uses sanitized Claude Code usage metadata and standard API list prices, including GPT-5.6's per-request long-context premium. Its savings percentage is a same-token comparison against pricing the OpenAI-routed lane at Fable rates, not a provider invoice or quality-adjusted A/B test. Raw prompts, paths, workspace labels, request/session/terminal IDs, API keys, OAuth material, and source identities are never sent to the browser.
+
 ## 5. Narration
 
-Opening: Claude Code is the agent harness. It manages repository tools and orchestration. It sends a model alias to a localhost compatibility endpoint, while the adjacent proxy evidence shows the configured Codex route. Model self-description is not proof.
+Opening: Herdr is the runtime orchestrator and Claude Code is the agent harness inside it. Main requests, model-family defaults, and subagents all request the same alias; CLIProxyAPI force-maps it to Codex. The authenticated proxy usage record—not model self-description—is the proof.
 
 Completion: The meaningful evidence is a reproduced failure, a regression test, a focused patch, passing verification, an independent review, and a visible routing trail.
 

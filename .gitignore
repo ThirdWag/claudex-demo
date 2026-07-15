@@ -4,3 +4,7 @@ state/
 logs/
 repo/
 *.runtime.yaml
+web/node_modules/
+web/dist/
+web/*.tsbuildinfo
+.playwright-mcp/

@@ -1,0 +1,99 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+# shellcheck source=../lib/claudex-common.sh
+source "${ROOT}/lib/claudex-common.sh"
+claudex_load_env
+claudex_require_env CLAUDEX_MANAGEMENT_KEY FABLEMAXXING_PORT
+
+configure_serve=1
+background=0
+while (( $# )); do
+  case "$1" in
+    --no-serve) configure_serve=0 ;;
+    --background) background=1 ;;
+    *) echo "Usage: demo-web [--background] [--no-serve]" >&2; exit 2 ;;
+  esac
+  shift
+done
+
+if [[ ! -f "${CLAUDEX_ROOT}/web/dist/index.html" ]]; then
+  (cd "${CLAUDEX_ROOT}/web" && bun install --frozen-lockfile --no-progress && bun run build)
+fi
+
+if (( configure_serve )); then
+  tailscale_bin=""
+  if command -v tailscale >/dev/null 2>&1; then
+    tailscale_bin="$(command -v tailscale)"
+  elif [[ -x /Applications/Tailscale.app/Contents/MacOS/Tailscale ]]; then
+    tailscale_bin="/Applications/Tailscale.app/Contents/MacOS/Tailscale"
+  fi
+  [[ -n "${tailscale_bin}" ]] || { echo "Tailscale CLI not found." >&2; exit 1; }
+  "${tailscale_bin}" serve --bg "${FABLEMAXXING_PORT}"
+fi
+
+if (( background )); then
+  if [[ "$(uname -s)" == "Darwin" ]]; then
+    label="org.thirdwag.fablemaxxing"
+    domain="gui/$(id -u)"
+    agent_dir="${HOME}/Library/LaunchAgents"
+    plist="${agent_dir}/${label}.plist"
+    mkdir -p "${agent_dir}"
+    python3 - "${plist}" "${CLAUDEX_ROOT}" "${label}" <<'PY'
+import pathlib
+import plistlib
+import sys
+
+path = pathlib.Path(sys.argv[1])
+root = pathlib.Path(sys.argv[2])
+label = sys.argv[3]
+payload = {
+    "Label": label,
+    "ProgramArguments": [str(root / "bin/demo-web"), "--no-serve"],
+    "WorkingDirectory": str(root / "web"),
+    "RunAtLoad": True,
+    "KeepAlive": True,
+    "ThrottleInterval": 3,
+    "EnvironmentVariables": {
+        "PATH": "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin",
+    },
+    "StandardOutPath": str(root / "logs/web.log"),
+    "StandardErrorPath": str(root / "logs/web.log"),
+}
+with path.open("wb") as handle:
+    plistlib.dump(payload, handle)
+PY
+    chmod 600 "${plist}"
+    launchctl bootout "${domain}/${label}" 2>/dev/null || true
+    sleep 1
+    launchctl bootstrap "${domain}" "${plist}"
+    sleep 0.5
+    launchctl print "${domain}/${label}" >/dev/null
+    rm -f "${CLAUDEX_ROOT}/state/web.pid"
+    echo "FableMaxxing started as LaunchAgent ${label}."
+    exit 0
+  fi
+
+  pid_file="${CLAUDEX_ROOT}/state/web.pid"
+  if [[ -f "${pid_file}" ]] && kill -0 "$(<"${pid_file}")" 2>/dev/null; then
+    echo "FableMaxxing is already running (pid $(<"${pid_file}"))."
+    exit 0
+  fi
+  nohup "${CLAUDEX_ROOT}/bin/demo-web" --no-serve >> "${CLAUDEX_ROOT}/logs/web.log" 2>&1 &
+  web_pid=$!
+  echo "${web_pid}" > "${pid_file}"
+  chmod 600 "${pid_file}"
+  sleep 0.5
+  if ! kill -0 "${web_pid}" 2>/dev/null; then
+    rm -f "${pid_file}"
+    echo "FableMaxxing failed to start. Recent log output:" >&2
+    tail -n 10 "${CLAUDEX_ROOT}/logs/web.log" >&2
+    exit 1
+  fi
+  echo "FableMaxxing started in the background (pid ${web_pid})."
+  exit 0
+fi
+
+cd "${CLAUDEX_ROOT}/web"
+exec bun run server/index.ts

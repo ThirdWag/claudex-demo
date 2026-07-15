@@ -1,0 +1,71 @@
+export type AccessRole = "viewer";
+export type Provider = "claude" | "codex" | "unknown";
+export type AgentStatus = "working" | "idle" | "done" | "blocked" | "unknown";
+
+export interface SessionIdentity {
+  user: string;
+  displayName: string;
+  role: AccessRole;
+  viaTailscale: boolean;
+}
+
+export interface HerdrAgent {
+  alias: string;
+  type: string;
+  status: AgentStatus;
+  focused: boolean;
+}
+
+export interface HerdrSnapshot {
+  healthy: boolean;
+  version: string;
+  agents: HerdrAgent[];
+}
+
+export interface TokenEvent {
+  id: string;
+  timestamp: string;
+  latencyMs: number;
+  inputTokens: number;
+  outputTokens: number;
+  reasoningTokens: number;
+  cachedTokens: number;
+  totalTokens: number;
+  failed: boolean;
+  provider: string;
+  model: string;
+  alias: string;
+}
+
+export interface PublicTokenEvent extends Omit<TokenEvent, "id" | "provider" | "model" | "alias"> {
+  provider: Exclude<Provider, "unknown">;
+}
+
+export interface TokenTotals {
+  inputTokens: number;
+  outputTokens: number;
+  reasoningTokens: number;
+  cachedTokens: number;
+  totalTokens: number;
+  requests: number;
+}
+
+export type RouteStatus = "verified" | "drift" | "unverified";
+
+export interface RouteAttestation {
+  requestedAlias: string;
+  expectedProvider: "codex";
+  expectedModel: string;
+  actualProvider: Provider;
+  upstreamModel: string;
+  verifiedAt: string | null;
+  status: RouteStatus;
+}
+
+export interface SpendReconciliation {
+  status: "complete" | "partial" | "unavailable";
+  proxyObservedTokens: number;
+  transcriptTokens: number;
+  coveragePercent: number;
+  proxyObserved: { fable: TokenTotals; openai: TokenTotals };
+}

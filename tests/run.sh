@@ -28,6 +28,9 @@ HOME="${TMP}/home" CLAUDEX_INSTALL_ROOT="${TMP}/home/claudex-demo" \
   bash "${SOURCE_ROOT}/install.sh" >/dev/null
 ROOT="${TMP}/home/claudex-demo"
 
+(cd "${ROOT}/web" && bun run test >/dev/null)
+pass "installed FableMaxxing security and telemetry tests"
+
 [[ "$(stat -f '%Lp' "${ROOT}/config/demo.env")" == "600" ]] || fail "demo.env mode"
 [[ -f "${ROOT}/repo/cre-api-demo/.claudex-demo-repo" ]] || fail "demo repository marker"
 git -C "${ROOT}/repo/cre-api-demo" rev-parse --verify refs/tags/claudex-demo-baseline >/dev/null \
@@ -58,6 +61,9 @@ assert "__CLAUDEX_" not in env
 key_line = next(line for line in env.splitlines() if line.startswith("export CLAUDEX_PROXY_KEY="))
 key = key_line.split('"', 2)[1]
 assert len(key) == 64 and all(c in "0123456789abcdef" for c in key)
+management_line = next(line for line in env.splitlines() if line.startswith("export CLAUDEX_MANAGEMENT_KEY="))
+management_key = management_line.split('"', 2)[1]
+assert len(management_key) == 64 and management_key != key
 template = (root / "config/cliproxyapi.yaml").read_text()
 assert 'host: "127.0.0.1"' in template
 PY
