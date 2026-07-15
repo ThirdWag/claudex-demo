@@ -1,6 +1,6 @@
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
-import type { Provider, PublicTokenEvent, TokenEvent, TokenTotals } from "./types";
+import type { Provider, PublicTokenEvent, RouteAttestation, TokenEvent, TokenTotals } from "./types";
 
 type UnknownRecord = Record<string, unknown>;
 
@@ -25,6 +25,7 @@ export function sanitizeUsageRecord(raw: UnknownRecord): TokenEvent {
     failed: raw.failed === true,
     provider: stringValue(raw.provider),
     model: stringValue(raw.model),
+    alias: stringValue(raw.alias),
   };
 }
 
@@ -65,6 +66,39 @@ export function tokenTotals(events: TokenEvent[]): TokenTotals {
       requests: totals.requests + 1,
     }),
     { inputTokens: 0, outputTokens: 0, reasoningTokens: 0, cachedTokens: 0, totalTokens: 0, requests: 0 },
+  );
+}
+
+export function attestRoute(
+  events: TokenEvent[],
+  requestedAlias: string,
+  expectedModel: string,
+  proxyHealthy: boolean,
+): RouteAttestation {
+  const matching = events.filter((event) => event.alias === requestedAlias);
+  const latest = matching.at(-1);
+  const actualProvider = latest ? providerForEvent(latest) : "unknown";
+  const verified = Boolean(
+    proxyHealthy && latest && actualProvider === "codex" && latest.model === expectedModel && !latest.failed,
+  );
+  return {
+    requestedAlias,
+    expectedProvider: "codex",
+    expectedModel,
+    actualProvider,
+    upstreamModel: latest?.model ?? "",
+    verifiedAt: verified ? latest?.timestamp ?? null : null,
+    status: !latest || !proxyHealthy ? "unverified" : verified ? "verified" : "drift",
+  };
+}
+
+export function verifiedRouteEvents(events: TokenEvent[], route: RouteAttestation) {
+  if (route.status !== "verified") return [];
+  return events.filter((event) =>
+    event.alias === route.requestedAlias
+    && providerForEvent(event) === route.expectedProvider
+    && event.model === route.expectedModel
+    && !event.failed
   );
 }
 

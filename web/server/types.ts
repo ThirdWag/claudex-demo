@@ -34,9 +34,10 @@ export interface TokenEvent {
   failed: boolean;
   provider: string;
   model: string;
+  alias: string;
 }
 
-export interface PublicTokenEvent extends Omit<TokenEvent, "id" | "provider" | "model"> {
+export interface PublicTokenEvent extends Omit<TokenEvent, "id" | "provider" | "model" | "alias"> {
   provider: Exclude<Provider, "unknown">;
 }
 
@@ -47,4 +48,16 @@ export interface TokenTotals {
   cachedTokens: number;
   totalTokens: number;
   requests: number;
+}
+
+export type RouteStatus = "verified" | "drift" | "unverified";
+
+export interface RouteAttestation {
+  requestedAlias: string;
+  expectedProvider: "codex";
+  expectedModel: string;
+  actualProvider: Provider;
+  upstreamModel: string;
+  verifiedAt: string | null;
+  status: RouteStatus;
 }

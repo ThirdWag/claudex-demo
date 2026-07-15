@@ -2,7 +2,7 @@
 
 [![test](https://github.com/ThirdWag/claudex-demo/actions/workflows/test.yml/badge.svg)](https://github.com/ThirdWag/claudex-demo/actions/workflows/test.yml)
 
-This project installs a repeatable macOS demonstration environment in which Claude Code runs inside Herdr and CLIProxyAPI routes model requests to configured Claude or Codex providers.
+This project installs a repeatable macOS demonstration environment in which Claude Code runs inside Herdr and sends every model request through one forced CLIProxyAPI alias to Codex.
 
 The proxy is always configured for `127.0.0.1:8317`. The presentation shows the configured route and sanitized proxy logs; it never treats model self-identification as proof.
 
@@ -36,7 +36,7 @@ The test suite uses a temporary home directory and never touches the installed d
 
 ## Private browser console
 
-FableMaxxing is a display-only browser surface for the remote Mac. It combines sanitized Herdr agent state with metadata-only usage records from Herdr-managed Claude Code sessions to show the real request topology: Herdr owns Claude Code, Claude Code calls the proxy, and the proxy branches requests to Claude or Codex. CLIProxyAPI remains the route-health source. FableMaxxing never reads prompts or terminal content and never starts, stops, or reconfigures Herdr, the proxy, or Claude Code.
+FableMaxxing is a display-only browser surface for the remote Mac. It combines sanitized Herdr agent state with authenticated CLIProxyAPI usage records to show the real request topology: Herdr owns Claude Code, Claude Code requests the single harness alias, and the proxy force-maps that alias to Codex. The dashboard counts only records that attest the expected alias, Codex provider, and backend model; mismatches appear as architecture drift. FableMaxxing never reads prompts or terminal content and never starts, stops, or reconfigures Herdr, the proxy, or Claude Code.
 
 Configure `~/claudex-demo/config/demo.env` with the existing proxy's client key and its localhost management credential. CLIProxyAPI usage statistics must be enabled for token telemetry. Keep both files mode `0600` and never commit their values.
 

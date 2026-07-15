@@ -14,9 +14,8 @@ const emptySnapshot: Snapshot = {
   updatedAt: new Date(0).toISOString(),
   services: { proxyHealthy: false, herdrHealthy: false },
   herdr: { healthy: false, version: "unavailable", agents: [] },
-  route: { claudeModel: "claude-fable-5", codexModel: "gpt-5.6-sol" },
+  route: { requestedAlias: "claudex-demo", expectedProvider: "codex", expectedModel: "gpt-5.6-sol", actualProvider: "unknown", upstreamModel: "", verifiedAt: null, status: "unverified" },
   tokenEvents: [],
-  providerTotals: { claude: zeroTotals, codex: zeroTotals },
   tokenTotals: zeroTotals,
 };
 
@@ -47,7 +46,7 @@ export function App() {
   }, [refresh]);
 
   const stale = useMemo(() => Date.now() - Date.parse(snapshot.updatedAt) > 6000 || Boolean(error), [snapshot.updatedAt, error]);
-  const live = snapshot.services.herdrHealthy && snapshot.services.proxyHealthy && !stale;
+  const live = snapshot.services.herdrHealthy && snapshot.services.proxyHealthy && snapshot.route.status === "verified" && !stale;
 
   return (
     <main className="app-shell">
@@ -67,11 +66,11 @@ export function App() {
       <div className="dashboard">
         <AgentRail agents={snapshot.herdr.agents} healthy={snapshot.services.herdrHealthy} version={snapshot.herdr.version} />
         <AgentFlow snapshot={snapshot} live={live} />
-        <ProviderTotals totals={snapshot.providerTotals} combined={snapshot.tokenTotals} route={snapshot.route} />
+        <ProviderTotals totals={snapshot.tokenTotals} route={snapshot.route} />
         <TokenFlow events={snapshot.tokenEvents} live={live} />
       </div>
 
-      <footer className="source-note">Sources: Herdr socket API + Claude Code usage metadata + CLIProxyAPI route health · transcript content excluded.</footer>
+      <footer className="source-note">Sources: Herdr socket API + CLIProxyAPI authenticated usage records · prompts and transcript content excluded.</footer>
     </main>
   );
 }

@@ -34,8 +34,15 @@ export interface Snapshot {
   updatedAt: string;
   services: { proxyHealthy: boolean; herdrHealthy: boolean };
   herdr: { healthy: boolean; version: string; agents: HerdrAgent[] };
-  route: { claudeModel: string; codexModel: string };
+  route: {
+    requestedAlias: string;
+    expectedProvider: "codex";
+    expectedModel: string;
+    actualProvider: Provider | "unknown";
+    upstreamModel: string;
+    verifiedAt: string | null;
+    status: "verified" | "drift" | "unverified";
+  };
   tokenEvents: TokenEvent[];
-  providerTotals: { claude: TokenTotals; codex: TokenTotals };
   tokenTotals: TokenTotals;
 }

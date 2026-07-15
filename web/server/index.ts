@@ -1,8 +1,7 @@
 import { extname, resolve, sep } from "node:path";
 import { identityFromRequest } from "./security";
-import { readClaudeUsage } from "./claude-usage";
 import { readHerdrRuntime } from "./herdr";
-import { providerForEvent, publicTokenEvent, sanitizeUsageRecord, TokenStore, tokenTotals } from "./telemetry";
+import { attestRoute, publicTokenEvent, sanitizeUsageRecord, TokenStore, tokenTotals, verifiedRouteEvents } from "./telemetry";
 
 const root = process.env.CLAUDEX_ROOT ?? resolve(import.meta.dir, "../..");
 const port = Number(process.env.FABLEMAXXING_PORT ?? 3000);
@@ -10,10 +9,10 @@ const dist = resolve(import.meta.dir, "../dist");
 const statePath = process.env.FABLEMAXXING_STATE_FILE ?? resolve(root, "state/token-events.json");
 const store = new TokenStore(statePath);
 await store.load();
+const observedSince = Date.now();
 
 if (process.env.FABLEMAXXING_DEMO_DATA === "1" && store.events().length === 0) {
   const now = Date.now();
-  const models = ["claude-fable-5", "gpt-5.6-sol"];
   await store.ingest(Array.from({ length: 8 }, (_, index) => sanitizeUsageRecord({
     timestamp: new Date(now - index * 8200).toISOString(),
     latency_ms: 420 + index * 67,
@@ -26,8 +25,9 @@ if (process.env.FABLEMAXXING_DEMO_DATA === "1" && store.events().length === 0) {
       total_tokens: 19500 - index * 510,
     },
     failed: false,
-    provider: index % 2 ? "openai" : "anthropic",
-    model: models[index % 2],
+    provider: "codex",
+    model: process.env.CLAUDEX_CODEX_MODEL ?? "gpt-5.6-sol",
+    alias: process.env.CLAUDEX_HARNESS_MODEL ?? "claudex-demo",
   })));
 }
 
@@ -51,10 +51,12 @@ async function proxyHealthy() {
 
 async function snapshot(viaTailscale: boolean) {
   const [proxy, herdrRuntime] = await Promise.all([proxyHealthy(), readHerdrRuntime()]);
-  const allEvents = await readClaudeUsage(herdrRuntime.sessionIds);
+  const requestedAlias = process.env.CLAUDEX_HARNESS_MODEL ?? "claudex-demo";
+  const expectedModel = process.env.CLAUDEX_CODEX_MODEL ?? "gpt-5.6-sol";
+  const observedEvents = store.events().filter((event) => Date.parse(event.timestamp) >= observedSince);
+  const route = attestRoute(observedEvents, requestedAlias, expectedModel, proxy);
+  const allEvents = verifiedRouteEvents(observedEvents, route);
   const events = allEvents.slice(-40).reverse();
-  const claudeEvents = allEvents.filter((event) => providerForEvent(event) === "claude");
-  const codexEvents = allEvents.filter((event) => providerForEvent(event) === "codex");
   const herdr = herdrRuntime.snapshot;
 
   return {
@@ -62,15 +64,8 @@ async function snapshot(viaTailscale: boolean) {
     updatedAt: new Date().toISOString(),
     services: { proxyHealthy: proxy, herdrHealthy: herdr.healthy },
     herdr,
-    route: {
-      claudeModel: process.env.CLAUDEX_HARNESS_MODEL ?? "claude-fable-5",
-      codexModel: process.env.CLAUDEX_CODEX_MODEL ?? "gpt-5.6-sol",
-    },
+    route,
     tokenEvents: events.map(publicTokenEvent),
-    providerTotals: {
-      claude: tokenTotals(claudeEvents),
-      codex: tokenTotals(codexEvents),
-    },
     tokenTotals: tokenTotals(allEvents),
   };
 }
@@ -98,8 +93,7 @@ async function pollUsage() {
     if (!Array.isArray(records)) return;
     const events = records
       .filter((record) => record && typeof record === "object")
-      .map((record) => sanitizeUsageRecord(record as Record<string, unknown>))
-      .filter((event) => providerForEvent(event) !== "unknown");
+      .map((record) => sanitizeUsageRecord(record as Record<string, unknown>));
     if (events.length) await store.ingest(events);
   } catch {
     // Either observed service can stop independently while the observer stays up.

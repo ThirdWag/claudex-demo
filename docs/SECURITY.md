@@ -17,8 +17,8 @@ The sanitized viewer is not a substitute for reviewing raw logs before a public 
 - Every identified tailnet user is read-only; FableMaxxing exposes no lifecycle controls or terminal stream.
 - The action endpoint and legacy terminal WebSocket path always return HTTP 405.
 - The backend polls CLIProxyAPI's authenticated management usage queue over localhost for route evidence and never controls the proxy service.
-- Displayed token counts come from allowlisted `model` and `usage` metadata in the current Herdr-managed Claude Code sessions. Assistant content, user content, prompts, tool calls, and transcript identifiers are not returned to the browser.
-- Raw proxy usage records are reduced to token counts, latency, provider/model classification, and success state before mode-`0600` persistence. The browser receives neither request IDs nor raw model, alias, or endpoint fields.
+- Displayed token counts come from allowlisted fields in authenticated CLIProxyAPI usage records observed during the current FableMaxxing process. Claude Code transcript files are not read; assistant content, user content, prompts, tool calls, and transcript identifiers never enter the telemetry path.
+- Raw proxy usage records are reduced to token counts, latency, the configured harness alias, provider/model route evidence, and success state before mode-`0600` persistence. The browser receives the expected alias and sanitized route attestation, but never request IDs, endpoints, source identities, or credentials.
 - Herdr socket snapshots are allowlisted to synthetic agent aliases, agent type, status, focus, and Herdr version. Working directories, workspace labels, terminal IDs, session IDs, and terminal content never cross the browser boundary.
 - Tailscale identity is used only to authorize the request; login and display-name values are not returned by the snapshot API.
 - Never enable Tailscale Funnel for this service.

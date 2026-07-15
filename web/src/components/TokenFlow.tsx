@@ -16,21 +16,21 @@ export function TokenFlow({ events, live }: { events: TokenEvent[]; live: boolea
   return (
     <section className="panel events-panel">
       <div className="panel-header compact-header">
-        <div><p>Claude Code usage metadata</p><h2>Live Token Events</h2></div>
+        <div><p>Authenticated proxy records</p><h2>Verified Codex Token Events</h2></div>
         <span className={`live-state ${live ? "good" : "neutral"}`}><i />{live ? "Live" : "Waiting"}</span>
       </div>
       <div className="events-table-wrap">
         <table className="events-table">
-          <thead><tr><th>Time</th><th>Provider</th><th>Input</th><th>Cache/read</th><th>Output</th><th>Reasoning</th><th>Total</th><th>Latency</th><th>Status</th></tr></thead>
+          <thead><tr><th>Time</th><th>Route</th><th>Input</th><th>Cache/read</th><th>Output</th><th>Reasoning</th><th>Total</th><th>Latency</th><th>Status</th></tr></thead>
           <tbody>
             {events.slice(0, 14).map((event, index) => (
               <tr key={`${event.timestamp}-${event.provider}-${index}`}>
-                <td>{time(event.timestamp)}</td><td className={event.provider}>{event.provider}</td><td>{compact(event.inputTokens)}</td><td>{compact(event.cachedTokens)}</td>
+                <td>{time(event.timestamp)}</td><td className="codex">Codex</td><td>{compact(event.inputTokens)}</td><td>{compact(event.cachedTokens)}</td>
                 <td>{compact(event.outputTokens)}</td><td>{compact(event.reasoningTokens)}</td><td>{compact(event.totalTokens)}</td><td>{event.latencyMs ? `${event.latencyMs}ms` : "—"}</td>
                 <td className={event.failed ? "bad" : "good"}>{event.failed ? "Error" : "OK"}</td>
               </tr>
             ))}
-            {!events.length && <tr><td colSpan={9} className="empty-state">Token events appear when a Herdr-managed Claude Code session receives a model response.</td></tr>}
+            {!events.length && <tr><td colSpan={9} className="empty-state">Verified token events appear after a Herdr-managed Claude Code request traverses the Codex route.</td></tr>}
           </tbody>
         </table>
       </div>

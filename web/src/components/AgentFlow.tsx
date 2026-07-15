@@ -4,12 +4,14 @@ const compact = (value: number) => value >= 1_000_000
   ? `${(value / 1_000_000).toFixed(2)}m`
   : value >= 1000 ? `${(value / 1000).toFixed(1)}k` : String(value);
 
-function ProviderNode({ kind, model, total, requests }: { kind: "claude" | "codex"; model: string; total: number; requests: number }) {
+function CodexNode({ snapshot }: { snapshot: Snapshot }) {
+  const { route, tokenTotals } = snapshot;
   return (
-    <article className={`flow-node provider-node ${kind}`}>
-      <span className="node-icon" aria-hidden="true">{kind === "claude" ? "C" : "O"}</span>
-      <div><small>{kind}</small><strong>{model}</strong></div>
-      <dl><div><dt>Tokens</dt><dd>{compact(total)}</dd></div><div><dt>Requests</dt><dd>{requests}</dd></div></dl>
+    <article className={`flow-node provider-node codex ${route.status}`}>
+      <span className="node-icon" aria-hidden="true">O</span>
+      <div><small>Codex upstream</small><strong>{route.upstreamModel || route.expectedModel}</strong></div>
+      <span className={`node-status ${route.status === "verified" ? "good" : route.status === "drift" ? "bad" : "neutral"}`}>{route.status}</span>
+      <dl><div><dt>Tokens</dt><dd>{compact(tokenTotals.totalTokens)}</dd></div><div><dt>Requests</dt><dd>{tokenTotals.requests}</dd></div></dl>
     </article>
   );
 }
@@ -40,13 +42,10 @@ export function AgentFlow({ snapshot, live }: { snapshot: Snapshot; live: boolea
           <div><small>Routing boundary</small><strong>CLIProxyAPI</strong></div>
           <span className={`node-status ${snapshot.services.proxyHealthy ? "good" : "bad"}`}>{snapshot.services.proxyHealthy ? "Healthy" : "Unavailable"}</span>
         </article>
-        <span className="route-line branch-line"><i /></span>
-        <div className="provider-branch">
-          <ProviderNode kind="claude" model={snapshot.route.claudeModel} total={snapshot.providerTotals.claude.totalTokens} requests={snapshot.providerTotals.claude.requests} />
-          <ProviderNode kind="codex" model={snapshot.route.codexModel} total={snapshot.providerTotals.codex.totalTokens} requests={snapshot.providerTotals.codex.requests} />
-        </div>
+        <span className="route-line upstream-line"><i /></span>
+        <CodexNode snapshot={snapshot} />
       </div>
-      <p className="flow-caveat">Model usage is tied to Herdr-managed Claude Code session IDs; prompts and transcript content are never read.</p>
+      <p className={`flow-caveat route-${snapshot.route.status}`}>Requested alias <strong>{snapshot.route.requestedAlias}</strong> is force-mapped to Codex. {snapshot.route.status === "verified" ? "The latest authenticated usage record verifies the upstream route." : snapshot.route.status === "drift" ? "Architecture drift detected: the observed provider or model does not match the configured Codex route." : "Waiting for a model response to attest the upstream route."}</p>
     </section>
   );
 }

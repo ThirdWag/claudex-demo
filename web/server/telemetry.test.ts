@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { providerForEvent, publicTokenEvent, sanitizeUsageRecord, tokenTotals } from "./telemetry";
+import { attestRoute, providerForEvent, publicTokenEvent, sanitizeUsageRecord, tokenTotals, verifiedRouteEvents } from "./telemetry";
 
 describe("usage telemetry sanitization", () => {
   test("keeps token accounting and drops credentials and identity", () => {
@@ -19,6 +19,7 @@ describe("usage telemetry sanitization", () => {
       failed: false,
       provider: "openai",
       model: "gpt-test",
+      alias: "",
     });
 
     expect(event).toEqual({
@@ -33,6 +34,7 @@ describe("usage telemetry sanitization", () => {
       failed: false,
       provider: "openai",
       model: "gpt-test",
+      alias: "",
     });
     expect(JSON.stringify(event)).not.toContain("private@example.com");
     expect(JSON.stringify(event)).not.toContain("sk-sensitive");
@@ -59,6 +61,41 @@ describe("usage telemetry sanitization", () => {
   test("uses the routed model when the protocol provider says Claude", () => {
     const event = sanitizeUsageRecord({ provider: "claude", model: "gpt-5.6-sol", tokens: { total_tokens: 10 } });
     expect(providerForEvent(event)).toBe("codex");
+  });
+
+  test("attests only the forced alias reaching the expected Codex model", () => {
+    const event = sanitizeUsageRecord({
+      timestamp: "2026-07-14T22:00:00Z",
+      provider: "codex",
+      model: "gpt-5.6-sol",
+      alias: "claudex-demo",
+      tokens: { total_tokens: 314 },
+    });
+    const route = attestRoute([event], "claudex-demo", "gpt-5.6-sol", true);
+    expect(route).toEqual({
+      requestedAlias: "claudex-demo",
+      expectedProvider: "codex",
+      expectedModel: "gpt-5.6-sol",
+      actualProvider: "codex",
+      upstreamModel: "gpt-5.6-sol",
+      verifiedAt: "2026-07-14T22:00:00Z",
+      status: "verified",
+    });
+    expect(verifiedRouteEvents([event], route)).toEqual([event]);
+  });
+
+  test("reports architecture drift and withholds unverified totals", () => {
+    const event = sanitizeUsageRecord({
+      timestamp: "2026-07-14T22:00:00Z",
+      provider: "anthropic",
+      model: "claude-fable-5",
+      alias: "claudex-demo",
+      tokens: { total_tokens: 999 },
+    });
+    const route = attestRoute([event], "claudex-demo", "gpt-5.6-sol", true);
+    expect(route.status).toBe("drift");
+    expect(route.actualProvider).toBe("claude");
+    expect(verifiedRouteEvents([event], route)).toEqual([]);
   });
 
   test("sums the session token dimensions", () => {
