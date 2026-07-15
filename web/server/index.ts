@@ -1,7 +1,7 @@
 import { extname, resolve, sep } from "node:path";
 import { identityFromRequest } from "./security";
 import { readHerdrRuntime } from "./herdr";
-import { attestRoute, providerForEvent, publicTokenEvent, sanitizeUsageRecord, spendTotals, TokenStore, tokenTotals, verifiedRouteEvents } from "./telemetry";
+import { attestRoute, publicTokenEvent, sanitizeUsageRecord, spendProviderForEvent, spendTotals, TokenStore, tokenTotals, verifiedRouteEvents } from "./telemetry";
 
 const root = process.env.CLAUDEX_ROOT ?? resolve(import.meta.dir, "../..");
 const port = Number(process.env.FABLEMAXXING_PORT ?? 3000);
@@ -55,9 +55,9 @@ async function snapshot(viaTailscale: boolean) {
   const observedEvents = store.events();
   const route = attestRoute(observedEvents, requestedAlias, expectedModel, proxy);
   const routeEvents = verifiedRouteEvents(observedEvents, route);
-  const trackedEvents = observedEvents.filter((event) => providerForEvent(event) !== "unknown");
-  const fableEvents = trackedEvents.filter((event) => providerForEvent(event) === "claude");
-  const openaiEvents = trackedEvents.filter((event) => providerForEvent(event) === "codex");
+  const trackedEvents = observedEvents.filter((event) => spendProviderForEvent(event) !== "unknown");
+  const fableEvents = trackedEvents.filter((event) => spendProviderForEvent(event) === "claude");
+  const openaiEvents = trackedEvents.filter((event) => spendProviderForEvent(event) === "codex");
   const events = trackedEvents.slice(-40).reverse();
   const herdr = herdrRuntime.snapshot;
 

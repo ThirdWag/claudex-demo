@@ -30,17 +30,21 @@ export function sanitizeUsageRecord(raw: UnknownRecord): TokenEvent {
 }
 
 export function providerForEvent(event: TokenEvent): Provider {
-  const model = event.model.toLowerCase();
-  if (/codex|openai|gpt/.test(model)) return "codex";
-  if (/claude|anthropic/.test(model)) return "claude";
-  const provider = event.provider.toLowerCase();
-  if (/codex|openai|gpt/.test(provider)) return "codex";
-  if (/claude|anthropic/.test(provider)) return "claude";
+  const provider = event.provider.trim().toLowerCase();
+  if (provider === "codex" || provider === "openai") return "codex";
+  if (provider === "claude" || provider === "anthropic") return "claude";
+  return "unknown";
+}
+
+export function spendProviderForEvent(event: TokenEvent): Provider {
+  const provider = providerForEvent(event);
+  if (provider === "codex") return "codex";
+  if (provider === "claude" && /fable/i.test(`${event.model} ${event.alias}`)) return "claude";
   return "unknown";
 }
 
 export function publicTokenEvent(event: TokenEvent): PublicTokenEvent {
-  const provider = providerForEvent(event);
+  const provider = spendProviderForEvent(event);
   if (provider === "unknown") throw new Error("Unknown providers cannot be published");
   return {
     timestamp: event.timestamp,
@@ -71,8 +75,8 @@ export function tokenTotals(events: TokenEvent[]): TokenTotals {
 
 export function spendTotals(events: TokenEvent[]) {
   return {
-    fable: tokenTotals(events.filter((event) => providerForEvent(event) === "claude")),
-    openai: tokenTotals(events.filter((event) => providerForEvent(event) === "codex")),
+    fable: tokenTotals(events.filter((event) => spendProviderForEvent(event) === "claude")),
+    openai: tokenTotals(events.filter((event) => spendProviderForEvent(event) === "codex")),
   };
 }
 

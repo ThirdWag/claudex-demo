@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { attestRoute, providerForEvent, publicTokenEvent, sanitizeUsageRecord, spendTotals, tokenTotals, verifiedRouteEvents } from "./telemetry";
+import { attestRoute, providerForEvent, publicTokenEvent, sanitizeUsageRecord, spendProviderForEvent, spendTotals, tokenTotals, verifiedRouteEvents } from "./telemetry";
 
 describe("usage telemetry sanitization", () => {
   test("keeps token accounting and drops credentials and identity", () => {
@@ -58,9 +58,10 @@ describe("usage telemetry sanitization", () => {
     expect(published).not.toContain("legacy-private-alias");
   });
 
-  test("uses the routed model when the protocol provider says Claude", () => {
+  test("does not relabel a Claude provider as Codex from the model name", () => {
     const event = sanitizeUsageRecord({ provider: "claude", model: "gpt-5.6-sol", tokens: { total_tokens: 10 } });
-    expect(providerForEvent(event)).toBe("codex");
+    expect(providerForEvent(event)).toBe("claude");
+    expect(spendProviderForEvent(event)).toBe("unknown");
   });
 
   test("attests only the forced alias reaching the expected Codex model", () => {
@@ -106,6 +107,12 @@ describe("usage telemetry sanitization", () => {
     expect(totals.fable.requests).toBe(1);
     expect(totals.openai.totalTokens).toBe(880);
     expect(totals.openai.requests).toBe(1);
+  });
+
+  test("does not count non-Fable Anthropic traffic as Fable spend", () => {
+    const event = sanitizeUsageRecord({ provider: "anthropic", model: "claude-sonnet", alias: "sonnet", tokens: { total_tokens: 500 } });
+    expect(spendProviderForEvent(event)).toBe("unknown");
+    expect(spendTotals([event]).fable.totalTokens).toBe(0);
   });
 
   test("sums the session token dimensions", () => {
