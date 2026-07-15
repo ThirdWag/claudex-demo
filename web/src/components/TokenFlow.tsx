@@ -16,7 +16,7 @@ export function TokenFlow({ events, live }: { events: TokenEvent[]; live: boolea
   return (
     <section className="panel events-panel">
       <div className="panel-header compact-header">
-        <div><p>Sanitized telemetry</p><h2>Live Token Events</h2></div>
+        <div><p>Claude Code usage metadata</p><h2>Live Token Events</h2></div>
         <span className={`live-state ${live ? "good" : "neutral"}`}><i />{live ? "Live" : "Waiting"}</span>
       </div>
       <div className="events-table-wrap">
@@ -30,7 +30,7 @@ export function TokenFlow({ events, live }: { events: TokenEvent[]; live: boolea
                 <td className={event.failed ? "bad" : "good"}>{event.failed ? "Error" : "OK"}</td>
               </tr>
             ))}
-            {!events.length && <tr><td colSpan={9} className="empty-state">Token events appear when Claude Code sends a request through CLIProxyAPI.</td></tr>}
+            {!events.length && <tr><td colSpan={9} className="empty-state">Token events appear when a Herdr-managed Claude Code session receives a model response.</td></tr>}
           </tbody>
         </table>
       </div>

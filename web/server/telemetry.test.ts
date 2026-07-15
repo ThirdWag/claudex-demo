@@ -56,6 +56,11 @@ describe("usage telemetry sanitization", () => {
     expect(published).not.toContain("legacy-private-alias");
   });
 
+  test("uses the routed model when the protocol provider says Claude", () => {
+    const event = sanitizeUsageRecord({ provider: "claude", model: "gpt-5.6-sol", tokens: { total_tokens: 10 } });
+    expect(providerForEvent(event)).toBe("codex");
+  });
+
   test("sums the session token dimensions", () => {
     const first = sanitizeUsageRecord({ tokens: { input_tokens: 10, output_tokens: 2, reasoning_tokens: 3, cached_tokens: 4, total_tokens: 15 } });
     const second = sanitizeUsageRecord({ tokens: { input_tokens: 20, output_tokens: 4, reasoning_tokens: 6, cached_tokens: 8, total_tokens: 30 } });

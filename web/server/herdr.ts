@@ -5,6 +5,26 @@ type UnknownRecord = Record<string, unknown>;
 const allowedTypes = new Set(["claude", "codex", "grok"]);
 const allowedStatuses = new Set(["working", "idle", "done", "blocked"]);
 
+export interface HerdrRuntime {
+  snapshot: HerdrSnapshot;
+  sessionIds: string[];
+}
+
+export function sanitizeHerdrRuntime(raw: unknown): HerdrRuntime {
+  const root = raw && typeof raw === "object" ? raw as UnknownRecord : {};
+  const result = root.result && typeof root.result === "object" ? root.result as UnknownRecord : {};
+  const snapshot = result.snapshot && typeof result.snapshot === "object" ? result.snapshot as UnknownRecord : {};
+  const rawAgents = Array.isArray(snapshot.agents) ? snapshot.agents : [];
+  const sessionIds = rawAgents.flatMap((value) => {
+    const agent = value && typeof value === "object" ? value as UnknownRecord : {};
+    const session = agent.agent_session && typeof agent.agent_session === "object" ? agent.agent_session as UnknownRecord : {};
+    const id = typeof session.value === "string" ? session.value : "";
+    return /^[a-zA-Z0-9-]{8,80}$/.test(id) ? [id] : [];
+  });
+
+  return { snapshot: sanitizeHerdrSnapshot(raw), sessionIds: [...new Set(sessionIds)] };
+}
+
 export function sanitizeHerdrSnapshot(raw: unknown): HerdrSnapshot {
   const root = raw && typeof raw === "object" ? raw as UnknownRecord : {};
   const result = root.result && typeof root.result === "object" ? root.result as UnknownRecord : {};
@@ -30,12 +50,16 @@ export function sanitizeHerdrSnapshot(raw: unknown): HerdrSnapshot {
 }
 
 export async function readHerdrSnapshot(): Promise<HerdrSnapshot> {
+  return (await readHerdrRuntime()).snapshot;
+}
+
+export async function readHerdrRuntime(): Promise<HerdrRuntime> {
   try {
     const child = Bun.spawn(["herdr", "api", "snapshot"], { stdout: "pipe", stderr: "pipe" });
     const [stdout, exitCode] = await Promise.all([new Response(child.stdout).text(), child.exited]);
     if (exitCode !== 0) throw new Error("Herdr snapshot failed");
-    return sanitizeHerdrSnapshot(JSON.parse(stdout));
+    return sanitizeHerdrRuntime(JSON.parse(stdout));
   } catch {
-    return { healthy: false, version: "unavailable", agents: [] };
+    return { snapshot: { healthy: false, version: "unavailable", agents: [] }, sessionIds: [] };
   }
 }

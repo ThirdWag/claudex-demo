@@ -46,7 +46,7 @@ export function AgentFlow({ snapshot, live }: { snapshot: Snapshot; live: boolea
           <ProviderNode kind="codex" model={snapshot.route.codexModel} total={snapshot.providerTotals.codex.totalTokens} requests={snapshot.providerTotals.codex.requests} />
         </div>
       </div>
-      <p className="flow-caveat">Requests branch by route. Agent activity and token events are aligned by time, not asserted as a direct causal link.</p>
+      <p className="flow-caveat">Model usage is tied to Herdr-managed Claude Code session IDs; prompts and transcript content are never read.</p>
     </section>
   );
 }

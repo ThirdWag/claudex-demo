@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { sanitizeHerdrSnapshot } from "./herdr";
+import { sanitizeHerdrRuntime, sanitizeHerdrSnapshot } from "./herdr";
 
 describe("Herdr snapshot sanitization", () => {
   test("publishes only aliases, agent type, status, and focus", () => {
@@ -24,5 +24,14 @@ describe("Herdr snapshot sanitization", () => {
     expect(serialized).not.toContain("secret-repo");
     expect(serialized).not.toContain("term-secret");
     expect(serialized).not.toContain("session-secret");
+  });
+
+  test("retains validated session IDs only in the private runtime result", () => {
+    const raw = { result: { snapshot: { agents: [
+      { agent: "claude", agent_session: { value: "session-12345678" } },
+      { agent: "claude", agent_session: { value: "../../private" } },
+    ] } } };
+    expect(sanitizeHerdrRuntime(raw).sessionIds).toEqual(["session-12345678"]);
+    expect(JSON.stringify(sanitizeHerdrSnapshot(raw))).not.toContain("session-12345678");
   });
 });

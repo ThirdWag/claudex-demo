@@ -71,7 +71,7 @@ export function App() {
         <TokenFlow events={snapshot.tokenEvents} live={live} />
       </div>
 
-      <footer className="source-note">Sources: Herdr socket API + CLIProxyAPI usage queue · request correlation is temporal.</footer>
+      <footer className="source-note">Sources: Herdr socket API + Claude Code usage metadata + CLIProxyAPI route health · transcript content excluded.</footer>
     </main>
   );
 }

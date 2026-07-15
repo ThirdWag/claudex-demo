@@ -29,9 +29,12 @@ export function sanitizeUsageRecord(raw: UnknownRecord): TokenEvent {
 }
 
 export function providerForEvent(event: TokenEvent): Provider {
-  const hint = `${event.provider} ${event.model}`.toLowerCase();
-  if (/claude|anthropic/.test(hint)) return "claude";
-  if (/codex|openai|gpt/.test(hint)) return "codex";
+  const model = event.model.toLowerCase();
+  if (/codex|openai|gpt/.test(model)) return "codex";
+  if (/claude|anthropic/.test(model)) return "claude";
+  const provider = event.provider.toLowerCase();
+  if (/codex|openai|gpt/.test(provider)) return "codex";
+  if (/claude|anthropic/.test(provider)) return "claude";
   return "unknown";
 }
 

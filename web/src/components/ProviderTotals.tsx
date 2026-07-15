@@ -20,7 +20,7 @@ function TotalCard({ kind, model, totals, combined }: { kind: "claude" | "codex"
 export function ProviderTotals({ totals, combined, route }: { totals: Snapshot["providerTotals"]; combined: TokenTotals; route: Snapshot["route"] }) {
   return (
     <section className="panel totals-panel">
-      <div className="panel-header compact-header"><div><p>Usage queue</p><h2>Provider Totals</h2></div><span>{combined.requests} requests</span></div>
+      <div className="panel-header compact-header"><div><p>Herdr session usage</p><h2>Provider Totals</h2></div><span>{combined.requests} responses</span></div>
       <div className="totals-stack">
         <TotalCard kind="claude" model={route.claudeModel} totals={totals.claude} combined={combined.totalTokens} />
         <TotalCard kind="codex" model={route.codexModel} totals={totals.codex} combined={combined.totalTokens} />

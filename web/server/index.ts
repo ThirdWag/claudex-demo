@@ -1,6 +1,7 @@
 import { extname, resolve, sep } from "node:path";
 import { identityFromRequest } from "./security";
-import { readHerdrSnapshot } from "./herdr";
+import { readClaudeUsage } from "./claude-usage";
+import { readHerdrRuntime } from "./herdr";
 import { providerForEvent, publicTokenEvent, sanitizeUsageRecord, TokenStore, tokenTotals } from "./telemetry";
 
 const root = process.env.CLAUDEX_ROOT ?? resolve(import.meta.dir, "../..");
@@ -49,11 +50,12 @@ async function proxyHealthy() {
 }
 
 async function snapshot(viaTailscale: boolean) {
-  const allEvents = store.events();
+  const [proxy, herdrRuntime] = await Promise.all([proxyHealthy(), readHerdrRuntime()]);
+  const allEvents = await readClaudeUsage(herdrRuntime.sessionIds);
   const events = allEvents.slice(-40).reverse();
   const claudeEvents = allEvents.filter((event) => providerForEvent(event) === "claude");
   const codexEvents = allEvents.filter((event) => providerForEvent(event) === "codex");
-  const [proxy, herdr] = await Promise.all([proxyHealthy(), readHerdrSnapshot()]);
+  const herdr = herdrRuntime.snapshot;
 
   return {
     access: { viaTailscale },
