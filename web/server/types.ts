@@ -61,3 +61,11 @@ export interface RouteAttestation {
   verifiedAt: string | null;
   status: RouteStatus;
 }
+
+export interface SpendReconciliation {
+  status: "complete" | "partial" | "unavailable";
+  proxyObservedTokens: number;
+  transcriptTokens: number;
+  coveragePercent: number;
+  proxyObserved: { fable: TokenTotals; openai: TokenTotals };
+}

@@ -1,14 +1,27 @@
-import { extname, resolve, sep } from "node:path";
+import { extname, join, resolve, sep } from "node:path";
+import { homedir } from "node:os";
 import { identityFromRequest } from "./security";
 import { readHerdrRuntime } from "./herdr";
 import { attestRoute, publicTokenEvent, sanitizeUsageRecord, spendProviderForEvent, spendTotals, TokenStore, tokenTotals, verifiedRouteEvents } from "./telemetry";
+import { TranscriptUsageReader } from "./transcript-usage";
 
 const root = process.env.CLAUDEX_ROOT ?? resolve(import.meta.dir, "../..");
 const port = Number(process.env.FABLEMAXXING_PORT ?? 3000);
 const dist = resolve(import.meta.dir, "../dist");
 const statePath = process.env.FABLEMAXXING_STATE_FILE ?? resolve(root, "state/token-events.json");
 const store = new TokenStore(statePath);
+const transcriptRoot = process.env.FABLEMAXXING_CLAUDE_PROJECTS || join(homedir(), ".claude/projects");
+const transcriptReader = new TranscriptUsageReader(transcriptRoot);
 await store.load();
+
+function defaultUsageSince() {
+  const start = new Date();
+  start.setHours(0, 0, 0, 0);
+  start.setDate(start.getDate() - 1);
+  return start.toISOString();
+}
+
+const usageSince = process.env.FABLEMAXXING_USAGE_SINCE || defaultUsageSince();
 
 if (process.env.FABLEMAXXING_DEMO_DATA === "1" && store.events().length === 0) {
   const now = Date.now();
@@ -56,8 +69,20 @@ async function snapshot(viaTailscale: boolean) {
   const route = attestRoute(observedEvents, requestedAlias, expectedModel, proxy);
   const routeEvents = verifiedRouteEvents(observedEvents, route);
   const trackedEvents = observedEvents.filter((event) => spendProviderForEvent(event) !== "unknown");
-  const fableEvents = trackedEvents.filter((event) => spendProviderForEvent(event) === "claude");
-  const openaiEvents = trackedEvents.filter((event) => spendProviderForEvent(event) === "codex");
+  const usage = await transcriptReader.read(usageSince, requestedAlias, route.status === "verified");
+  const proxyWindowEvents = trackedEvents.filter((event) => Date.parse(event.timestamp) >= Date.parse(usageSince));
+  const proxyTotals = spendTotals(proxyWindowEvents);
+  const transcriptTokens = usage.totals.fable.totalTokens + usage.totals.openai.totalTokens;
+  const proxyObservedTokens = proxyTotals.fable.totalTokens + proxyTotals.openai.totalTokens;
+  const coveragePercent = transcriptTokens ? Math.min(100, Math.round((proxyObservedTokens / transcriptTokens) * 100)) : 0;
+  const fallbackTotals = spendTotals(trackedEvents);
+  const providerTotals = usage.available
+    ? { fable: usage.totals.fable, openai: usage.totals.openai }
+    : fallbackTotals;
+  const fallbackModels = {
+    fable: [...new Set(trackedEvents.filter((event) => spendProviderForEvent(event) === "claude").map((event) => event.model).filter(Boolean))],
+    openai: [...new Set(trackedEvents.filter((event) => spendProviderForEvent(event) === "codex").map((event) => event.model).filter(Boolean))],
+  };
   const events = trackedEvents.slice(-40).reverse();
   const herdr = herdrRuntime.snapshot;
 
@@ -69,12 +94,29 @@ async function snapshot(viaTailscale: boolean) {
     route,
     tokenEvents: events.map(publicTokenEvent),
     routeTokenTotals: tokenTotals(routeEvents),
-    providerTotals: spendTotals(trackedEvents),
-    spendModels: {
-      fable: [...new Set(fableEvents.map((event) => event.model).filter(Boolean))],
-      openai: [...new Set(openaiEvents.map((event) => event.model).filter(Boolean))],
+    providerTotals,
+    spendModels: usage.available ? { fable: usage.models.fable, openai: usage.models.openai } : fallbackModels,
+    unattributedUsage: { totals: usage.totals.unattributed, models: usage.models.unattributed },
+    spendSource: { kind: "claude-code-transcripts", since: usage.since, updatedAt: usage.updatedAt, available: usage.available, filesRead: usage.filesRead },
+    reconciliation: {
+      status: !usage.available ? "unavailable" : coveragePercent >= 95 ? "complete" : "partial",
+      proxyObservedTokens,
+      transcriptTokens,
+      coveragePercent,
+      proxyObserved: proxyTotals,
     },
-    tokenTotals: tokenTotals(trackedEvents),
+    tokenTotals: tokenTotalsFromProviders(providerTotals.fable, providerTotals.openai),
+  };
+}
+
+function tokenTotalsFromProviders(fable: ReturnType<typeof tokenTotals>, openai: ReturnType<typeof tokenTotals>) {
+  return {
+    inputTokens: fable.inputTokens + openai.inputTokens,
+    outputTokens: fable.outputTokens + openai.outputTokens,
+    reasoningTokens: fable.reasoningTokens + openai.reasoningTokens,
+    cachedTokens: fable.cachedTokens + openai.cachedTokens,
+    totalTokens: fable.totalTokens + openai.totalTokens,
+    requests: fable.requests + openai.requests,
   };
 }
 

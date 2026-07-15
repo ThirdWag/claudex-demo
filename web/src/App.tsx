@@ -19,6 +19,9 @@ const emptySnapshot: Snapshot = {
   routeTokenTotals: zeroTotals,
   providerTotals: { fable: zeroTotals, openai: zeroTotals },
   spendModels: { fable: [], openai: [] },
+  unattributedUsage: { totals: zeroTotals, models: [] },
+  spendSource: { kind: "claude-code-transcripts", since: new Date(0).toISOString(), updatedAt: new Date(0).toISOString(), available: false, filesRead: 0 },
+  reconciliation: { status: "unavailable", proxyObservedTokens: 0, transcriptTokens: 0, coveragePercent: 0, proxyObserved: { fable: zeroTotals, openai: zeroTotals } },
   tokenTotals: zeroTotals,
 };
 
@@ -69,11 +72,11 @@ export function App() {
       <div className="dashboard">
         <AgentRail agents={snapshot.herdr.agents} healthy={snapshot.services.herdrHealthy} version={snapshot.herdr.version} />
         <AgentFlow snapshot={snapshot} live={live} />
-        <ProviderTotals totals={snapshot.providerTotals} combined={snapshot.tokenTotals} models={snapshot.spendModels} />
+        <ProviderTotals snapshot={snapshot} />
         <TokenFlow events={snapshot.tokenEvents} live={live} />
       </div>
 
-      <footer className="source-note">Sources: Herdr socket API + CLIProxyAPI authenticated usage records · prompts and transcript content excluded.</footer>
+      <footer className="source-note">Spend: sanitized Claude Code usage metadata · Route proof: CLIProxyAPI authenticated records · prompts and transcript content excluded.</footer>
     </main>
   );
 }

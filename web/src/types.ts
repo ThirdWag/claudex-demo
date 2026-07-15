@@ -47,5 +47,20 @@ export interface Snapshot {
   routeTokenTotals: TokenTotals;
   providerTotals: { fable: TokenTotals; openai: TokenTotals };
   spendModels: { fable: string[]; openai: string[] };
+  unattributedUsage: { totals: TokenTotals; models: string[] };
+  spendSource: {
+    kind: "claude-code-transcripts";
+    since: string;
+    updatedAt: string;
+    available: boolean;
+    filesRead: number;
+  };
+  reconciliation: {
+    status: "complete" | "partial" | "unavailable";
+    proxyObservedTokens: number;
+    transcriptTokens: number;
+    coveragePercent: number;
+    proxyObserved: { fable: TokenTotals; openai: TokenTotals };
+  };
   tokenTotals: TokenTotals;
 }

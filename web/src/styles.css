@@ -211,6 +211,12 @@ button, input, select { font: inherit; }
 .provider-total dt, .provider-total dd { font: 8px/1 ui-monospace, monospace; }
 .provider-total dt { color: var(--muted); }
 .provider-total dd { margin: 0; color: #cdd8de; }
+.reconciliation { display: grid; grid-template-columns: 1fr auto; gap: 6px 10px; padding: 10px 12px; border: 1px solid #55451f; background: #211d14; color: #d9b85f; font: 8px/1.35 ui-monospace, monospace; }
+.reconciliation.complete { border-color: #37613b; background: #152318; color: var(--codex); }
+.reconciliation.unavailable { border-color: #62303a; background: #2c171d; color: #ff8f98; }
+.reconciliation strong { font-size: 10px; }
+.reconciliation small { grid-column: 1 / -1; color: var(--muted); }
+.reconciliation .unattributed { color: #e9c36f; }
 .route-attestation { display: grid; gap: 0; margin: 0; border: 1px solid var(--border-soft); background: var(--surface-deep); }
 .route-attestation div { display: grid; grid-template-columns: 1fr minmax(0, 1.4fr); gap: 10px; padding: 10px 12px; }
 .route-attestation div + div { border-top: 1px solid var(--border-soft); }
